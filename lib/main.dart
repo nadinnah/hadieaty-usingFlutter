@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hadieaty/UI/home.dart';
+import 'package:hadieaty/pages/home.dart';
 
 void main() {
   runApp(MaterialApp(title: 'Flutter Demo',
