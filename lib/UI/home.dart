@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(fontSize: 30, fontWeight: FontWeight.w600),
             )),
         toolbarHeight: 50,
-        backgroundColor: Colors.amber,
+        backgroundColor: const Color(0xffe7e0dd),
       ),
       body: SingleChildScrollView(
         scrollDirection: Axis.vertical,
@@ -36,28 +36,33 @@ class _HomePageState extends State<HomePage> {
                       icon: const Icon(
                         Icons.person_add,
                         size: 30,
+                        color: Color(0xFF260C1A),
                       )),
-                  ElevatedButton(
+                  OutlinedButton(
                       onPressed: () {},
+                      style:
+                          OutlinedButton.styleFrom(
+                            side: const BorderSide(width: 3.0, color: Color(0xFF260C1A)),
+                            ),
                       child: const Row(
                         children: [
+
                           Icon(
                             Icons.add,
                             size: 30,
+                            color: Color(0xFF260C1A),
                           ),
                           SizedBox(width: 10),
                           Text(
                             'Create new event/list',
-                            style: TextStyle(fontSize: 20),
+                            style: TextStyle(fontSize: 20, color: Color(0xFF260C1A)),
                           )
                         ],
                       ))
                 ],
               ),
             ),
-            ListView(
 
-            )
           ],
 
         ),
