@@ -14,7 +14,7 @@ class _NavigationMenuState extends State<NavigationMenu> {
   Widget build(BuildContext context) {
     return BottomNavigationBar(
       selectedItemColor: Color(0xFF99B5AA),
-      backgroundColor:Color(0xFF6A817A) ,
+      backgroundColor:Color(0xff4e615a) ,
       currentIndex: _currentIndex,
       onTap: (int newIndex) {
         setState(() {
