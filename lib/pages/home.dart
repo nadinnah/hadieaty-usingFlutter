@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/navigationMenu.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 
 List friends=["Nadin", "W", "haji", "l", "y"];
@@ -19,13 +20,28 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor:const Color(0xffefefef),
       appBar: AppBar(
-        title: const Center(
-            child: Text(
-              'Hadieaty',
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w600, color: Colors.black),
+        title: Center(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: Color(0xff273331), width: 5,),
+                   borderRadius: BorderRadius.all(Radius.circular(15)),
+
+              ) ,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(45,22,45,22),
+                child: Text(
+                  'HADIEATY',
+                  style: GoogleFonts.anticDidone(
+                    fontSize: 35,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black,
+                  ),
+
+                ),
+              ),
             )),
-      toolbarHeight: 60,
-        backgroundColor:const Color(0xff4e615a),
+      toolbarHeight: 100,
+        backgroundColor:const Color(0xffefefef),
       ),
       body: Column(
         children: [
@@ -47,23 +63,23 @@ class _HomePageState extends State<HomePage> {
                       onPressed: () {},
                       style:
                           OutlinedButton.styleFrom(
-                            backgroundColor: Color(0xff738881),
-                            side: const BorderSide(width: 2.0, color: Color(
-                                0xFF000000)),
-                            padding: EdgeInsets.symmetric(horizontal: 5),
+                            backgroundColor: Color(0xff273331),
+                            //side: const BorderSide(width: 1.0, color: Color(
+                              //  0xFF000000)),
+                            padding: EdgeInsets.symmetric(horizontal: 8),
                             ),
                       child: const Row(
                         children: [
                           Icon(
                             Icons.add,
                             size: 30,
-                            color: Color(0xFF0B0A0A),
+                            color: Color(0xFFD8D7D7),
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: 5),
                           Text(
                             'Create new event/list',
                             style: TextStyle(fontSize: 20, color: Color(
-                                0xFF000000)),
+                                0xFFD8D7D7)),
                           )
                         ],
                       )),
