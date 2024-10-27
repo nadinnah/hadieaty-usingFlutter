@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/navigationMenu.dart';
 
+import 'package:google_fonts/google_fonts.dart';
 
 class GiftDetailPage extends StatefulWidget {
   const GiftDetailPage({super.key});
@@ -21,16 +22,18 @@ class _GiftDetailPageState extends State<GiftDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Gift Details Form:', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w600),),
-        toolbarHeight: 60,
-        backgroundColor:const Color(0xff4e615a),
-      ),
+      appBar: AppBar(title: Center(child: Text('Gift Details Form', style: GoogleFonts.anticDidone(
+        fontSize: 35,
+        fontWeight: FontWeight.w500,
+        color: Colors.black,
+    )
+        ),),),
+
 
       body: Padding(
         padding: const EdgeInsets.all(30),
         child: Form(key:myKey,child: Column(children: [
-          Text('Add Gift Details', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),),
-          SizedBox(height: 40,),
+
           TextFormField(
             decoration: InputDecoration(labelText: 'Gift Name:',border: OutlineInputBorder(),
                 hintText: 'Enter gift name',
@@ -75,6 +78,7 @@ class _GiftDetailPageState extends State<GiftDetailPage> {
               }
             },
           ),
+          //DropdownButtonFormField(items: items, onChanged: onChanged)
         ],)),
       ),
         bottomNavigationBar: NavigationMenu()

@@ -13,8 +13,9 @@ class _NavigationMenuState extends State<NavigationMenu> {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      selectedItemColor: Color(0xFF99B5AA),
-      backgroundColor:Color(0xff4e615a) ,
+      selectedItemColor: Color(0xFFF6F6F6),
+      unselectedItemColor: Color(0xFFF6F6F6) ,
+      backgroundColor:Color(0xff273331) ,
       currentIndex: _currentIndex,
       onTap: (int newIndex) {
         setState(() {
@@ -23,9 +24,9 @@ class _NavigationMenuState extends State<NavigationMenu> {
       },
       items: const [
         BottomNavigationBarItem(label: 'Home', icon: Icon(Icons.home, color: Color(
-            0xFF000000),)),
+            0xFFD8D7D7),)),
         BottomNavigationBarItem(label: 'Profile', icon: Icon(Icons.person,color: Color(
-            0xFF000000),)),
+            0xFFD8D7D7),)),
       ],
     );
   }

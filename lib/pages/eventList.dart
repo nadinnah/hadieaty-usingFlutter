@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/navigationMenu.dart';
 
+import 'package:google_fonts/google_fonts.dart';
 
 
 class EventListPage extends StatefulWidget {
@@ -14,23 +15,29 @@ class _EventListPageState extends State<EventListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Event List:'),),
-      body: Column(
-        children: [
-          Text('Sort By'),
-          Row(
-            children: [
-              ElevatedButton(style: ButtonStyle(
-          shape:WidgetStateProperty.all<RoundedRectangleBorder>(
-          RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18.0),
-        side: BorderSide(color: Colors.red)
-    )
-    )
-    ),onPressed: (){}, child: Icon(Icons.percent))
-            ]
-          )
-        ],
+      appBar: AppBar(title:  Center(
+        child: Text('Event List' ,style: GoogleFonts.anticDidone(
+          fontSize: 35,
+          fontWeight: FontWeight.w500,
+          color: Colors.black,
+
+        ),),
+      ),),
+      body: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            Text('Sort By'),
+            SizedBox(height: 20,),
+            Row(
+              children: [
+
+              ]
+            )
+          ],
+        ),
       ),
       bottomNavigationBar: NavigationMenu(),
     );
