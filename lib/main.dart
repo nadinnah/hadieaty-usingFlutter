@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hadieaty/pages/eventList.dart';
-import 'package:hadieaty/pages/giftDetail.dart';
+//import 'package:hadieaty/pages/eventList.dart';
+//import 'package:hadieaty/pages/giftDetail.dart';
 import 'package:hadieaty/pages/home.dart';
+import 'package:hadieaty/pages/login.dart';
+//import 'package:hadieaty/pages/login.dart';
 
 
 void main() {
@@ -9,5 +11,5 @@ void main() {
     theme: ThemeData(
       useMaterial3: true,
     ),
-    home: EventListPage(),));
+    home: const LoginPage(),));
 }
