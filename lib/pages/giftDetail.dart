@@ -11,77 +11,87 @@ class GiftDetailPage extends StatefulWidget {
 }
 
 class _GiftDetailPageState extends State<GiftDetailPage> {
-  GlobalKey<FormState> myKey=GlobalKey();
+  GlobalKey<FormState> myKey = GlobalKey();
 
-  TextEditingController giftName= TextEditingController();
-  TextEditingController giftDescription= TextEditingController();
-  TextEditingController giftCategory= TextEditingController();
-  TextEditingController giftPrice= TextEditingController();
-
+  TextEditingController giftName = TextEditingController();
+  TextEditingController giftDescription = TextEditingController();
+  TextEditingController giftCategory = TextEditingController();
+  TextEditingController giftPrice = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Center(child: Text('Gift Details Form', style: GoogleFonts.anticDidone(
-        fontSize: 35,
-        fontWeight: FontWeight.w500,
-        color: Colors.black,
-    )
-        ),),),
-
-
-      body: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Form(key:myKey,child: Column(children: [
-
-          TextFormField(
-            decoration: InputDecoration(labelText: 'Gift Name:',border: OutlineInputBorder(),
-                hintText: 'Enter gift name',
-              helperText: 'The gift name should be here'
-           ),
-            controller: giftName,
-            validator: (value){
-              if(value==null||value.isEmpty){
-                return ('Gift Name can not be empty');
-              }else{
-                return null;
-              }
-            },
-          ), SizedBox(
-            height: 20,
+        appBar: AppBar(
+          title: Center(
+            child: Text('Gift Details Form',
+                style: GoogleFonts.anticDidone(
+                  fontSize: 35,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                )),
           ),
-          TextFormField(
-            decoration: InputDecoration(labelText: 'Gift Descrption:',border: OutlineInputBorder(),hintText: 'Enter gift description',
-                helperText: 'The gift Description should be here'
-            ),
-            controller: giftDescription,
-            validator: (value){
-              if(value==null||value.isEmpty){
-                return ('Gift Description can not be empty');
-              }else{
-                return null;
-              }
-            },
-          ),SizedBox(
-            height: 20,
-          ),
-          TextFormField(
-            decoration: InputDecoration(labelText: 'Gift Descrption:',border: OutlineInputBorder(),hintText: 'Enter gift description',
-                helperText: 'The gift Description should be here'
-            ),
-            controller: giftDescription,
-            validator: (value){
-              if(value==null||value.isEmpty){
-                return ('Gift Description can not be empty');
-              }else{
-                return null;
-              }
-            },
-          ),
-          //DropdownButtonFormField(items: items, onChanged: onChanged)
-        ],)),
-      ),
-        bottomNavigationBar: NavigationMenu()
-    );
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(30),
+          child: Form(
+              key: myKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    decoration: InputDecoration(
+                        labelText: 'Gift Name:',
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter gift name',
+                        helperText: 'The gift name should be here'),
+                    controller: giftName,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return ('Gift Name can not be empty');
+                      } else {
+                        return null;
+                      }
+                    },
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                        labelText: 'Gift Descrption:',
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter gift description',
+                        helperText: 'The gift Description should be here'),
+                    controller: giftDescription,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return ('Gift Description can not be empty');
+                      } else {
+                        return null;
+                      }
+                    },
+                  ),
+                  SizedBox(
+                    height: 20,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                        labelText: 'Gift Descrption:',
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter gift description',
+                        helperText: 'The gift Description should be here'),
+                    controller: giftDescription,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return ('Gift Description can not be empty');
+                      } else {
+                        return null;
+                      }
+                    },
+                  ),
+                  //DropdownButtonFormField(items: items, onChanged: onChanged)
+                ],
+              )),
+        ),
+        bottomNavigationBar: NavigationMenu());
   }
 }
