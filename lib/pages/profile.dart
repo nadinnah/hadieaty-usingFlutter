@@ -13,10 +13,15 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Event List:'),
+        title: const Text('Your Profile'),
       ),
-      body: Column(
-        children: [],
+      body: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          children: [
+            Center(child: CircleAvatar(backgroundImage: AssetImage('lib/assets/black-and-white-gift-box.jpg',),radius: 100,))
+          ],
+        ),
       ),
       bottomNavigationBar: NavigationMenu(),
     );
