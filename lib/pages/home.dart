@@ -20,23 +20,14 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: const Color(0xffefefef),
       appBar: AppBar(
         title: Center(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Color(0xff273331),
-                width: 5,
-              ),
-              borderRadius: BorderRadius.all(Radius.circular(15)),
-            ),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(45, 22, 45, 22),
-              child: Text(
-                'HADIEATY',
-                style: GoogleFonts.anticDidone(
-                  fontSize: 35,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.black,
-                ),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(45, 22, 45, 22),
+            child: Text(
+              'HADIEATY',
+              style: GoogleFonts.anticDidone(
+                fontSize: 35,
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
               ),
             ),
           ),

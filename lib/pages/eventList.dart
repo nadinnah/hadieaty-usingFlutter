@@ -26,7 +26,7 @@ class _EventListPageState extends State<EventListPage> {
           ),
         ),
       ),
-      body: const Padding(
+      body:  Padding(
         padding:EdgeInsets.all(30),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +35,16 @@ class _EventListPageState extends State<EventListPage> {
             SizedBox(
               height: 20,
             ),
-            Row(children: [])
+            Row(children: []),
+            Spacer(),
+            Container(
+              child: Image.asset(
+                'lib/assets/giftBox.png', // Replace with your image URL.
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
           ],
         ),
       ),
