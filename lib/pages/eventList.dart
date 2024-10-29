@@ -39,7 +39,7 @@ class _EventListPageState extends State<EventListPage> {
             Spacer(),
             Container(
               child: Image.asset(
-                'lib/assets/giftBox.png', // Replace with your image URL.
+                'lib/assets/giftBox.png',
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
