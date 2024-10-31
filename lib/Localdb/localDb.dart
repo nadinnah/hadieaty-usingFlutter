@@ -117,5 +117,30 @@ class LocalDatabase {
     ''');
   }
 
+//CRUD OPERATIONS
+// CREATE/INSERT
+
+//Users: Add user profile information locally during the app setup or when the user updates their profile.
+// Events: Save new events created by the user.
+// Gifts: Save new gifts that are added to a gift list.
+// Friends: Add friends manually or from the contact list.
+
+// READ
+//Users: Fetch user profile details for the profile page.
+// Events: Fetch all events for the event list and filter them by upcoming/current/past status.
+// Gifts: Retrieve gifts associated with an event, especially when viewing a friend’s or the user’s gift list.
+// Friends: Fetch the list of friends to display on the home page.
+
+//UPDATE
+//Users: Update user profile settings or preferences.
+// Events: Modify event details, such as location, date, or description.
+// Gifts: Update gift details like status (from available to pledged), description, or price.
+// Friends: Update friendship-related data if needed, though generally, friends’ information remains stable.
+
+//DELETE
+//Users: If the user logs out, optionally clear their profile data locally.
+// Events: Delete past or irrelevant events if the user chooses to remove them.
+// Gifts: Delete gifts that are no longer part of a list or are unwanted.
+// Friends: Remove friends from the friend list if the user chooses to do so.
 
 }
