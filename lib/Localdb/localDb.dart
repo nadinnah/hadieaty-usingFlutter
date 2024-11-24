@@ -1,120 +1,96 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:async';
-import 'package:hadieaty/models/events.dart';
-import 'package:hadieaty/models/gifts.dart';
-import 'package:hadieaty/models/users.dart';
-import 'package:hadieaty/models/friends.dart';
 
-Database? _database;
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+
+
 class LocalDatabase {
+  static Database? _MyDataBase;
 
-  static final LocalDatabase _databaseHelper = LocalDatabase._createInstance();
-  LocalDatabase._createInstance();
-  factory LocalDatabase() => _databaseHelper;
-
-  final String _dbName = 'Local.db';
-
-  // Table names
-  final String userTable = 'Users';
-  final String eventTable = 'Events';
-  final String giftTable = 'Gifts';
-  final String friendTable = 'Friends';
-
-  // Users Table Columns
-  final String userId = 'id';
-  final String userName = 'name';
-  final String userEmail = 'email';
-  final String userPreferences = 'preferences';
-
-  // Events Table Columns
-  final String eventId = 'id';
-  final String eventName = 'name';
-  final String eventDate = 'date';
-  final String eventLocation = 'location';
-  final String eventDescription = 'description';
-  final String eventUserId = 'userId';
-
-  // Gifts Table Columns
-  final String giftId = 'id';
-  final String giftName = 'name';
-  final String giftDescription = 'description';
-  final String giftCategory = 'category';
-  final String giftPrice = 'price';
-  final String giftStatus = 'status';
-  final String giftEventId = 'eventId';
-
-  // Friends Table Columns
-  final String friendUserId = 'userId';
-  final String friendFriendId = 'friendId';
-
-
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initializeDB(_dbName);
-    return _database!;
+  Future<Database?> get MyDataBase async {
+    if (_MyDataBase == null) {
+      _MyDataBase = await initialize();
+      return _MyDataBase;
+    } else {
+      return _MyDataBase;
+    }
   }
 
+  int Version=1;
 
-  Future<Database> _initializeDB(String dbName) async {
-    final dbPath = await getDatabasesPath();
-    String path = dbPath + dbName;
+  initialize() async {
+    String mypath = await getDatabasesPath();
+    String path = join(mypath, 'myDataBasess.db');
+    Database mydb = await openDatabase(path, version: Version,
+        onCreate: (db, Version) async {
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDb,
-    );
+          await db.execute(''' CREATE TABLE IF NOT EXIST 'Users'(
+          'id' INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          'name' TEXT NOT NULL,
+          'email' TEXT NOT NULL,
+          'preferences' TEXT  
+          )
+          ''');
+
+          await db.execute(''' CREATE TABLE IF NOT EXIST 'Events'(
+          'id' INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          'name' TEXT NOT NULL,
+          'date' TEXT NOT NULL,
+          'location' TEXT NOT NULL,
+          'description' TEXT,
+          'userId' INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES Users (id)
+          )
+          ''');
+
+          await db.execute('''CREATE TABLE IF NOT EXISTS Gifts (
+          'id' INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          'name' TEXT NOT NULL,
+          'description' TEXT,
+          'category' TEXT,
+          'price' REAL,
+          'status' TEXT,
+          'eventId' INTEGER NOT NULL,
+          FOREIGN KEY (eventId) REFERENCES Events (id)
+          )''');
+
+          await db.execute('''CREATE TABLE IF NOT EXISTS Friends (
+          'userId' INTEGER NOT NULL,
+          'friendId' INTEGER NOT NULL,
+          PRIMARY KEY (userId, friendId),
+          FOREIGN KEY (userId) REFERENCES Users (id),
+          FOREIGN KEY (friendId) REFERENCES Users (id)
+          )
+          ''');
+
+          print("The databases have been created .......");
+        });
+    return mydb;
   }
 
-  void _createDb(Database db, int version) async {
+  readData(String SQL) async {
+    Database? mydata = await MyDataBase;
+    var response = await mydata!.rawQuery(SQL);
+    return response;
+  }
 
-    await db.execute('''   //Create Users table
-      CREATE TABLE $userTable (
-        $userId INTEGER PRIMARY KEY AUTOINCREMENT,
-        $userName TEXT NOT NULL,
-        $userEmail TEXT NOT NULL,
-        $userPreferences TEXT
-      )
-    ''');
+  insertData(String SQL) async {
+    Database? mydata = await MyDataBase;
+    int response = await mydata!.rawInsert(SQL);
+    return response;
+  }
 
-    await db.execute('''    //Create Events table
-      CREATE TABLE $eventTable (
-        $eventId INTEGER PRIMARY KEY AUTOINCREMENT,
-        $eventName TEXT NOT NULL,
-        $eventDate TEXT NOT NULL,
-        $eventLocation TEXT,
-        $eventDescription TEXT,
-        $eventUserId INTEGER,
-        FOREIGN KEY ($eventUserId) REFERENCES $userTable($userId)
-      )
-    ''');
+  deleteData(String SQL) async {
+    Database? mydata = await MyDataBase;
+    int response = await mydata!.rawDelete(SQL);
+    return response;
+  }
 
-
-    await db.execute('''    //Create Gifts table
-      CREATE TABLE $giftTable (
-        $giftId INTEGER PRIMARY KEY AUTOINCREMENT,
-        $giftName TEXT NOT NULL,
-        $giftDescription TEXT,
-        $giftCategory TEXT,
-        $giftPrice REAL,
-        $giftStatus TEXT,
-        $giftEventId INTEGER,
-        FOREIGN KEY ($giftEventId) REFERENCES $eventTable($eventId)
-      )
-    ''');
-
-
-    await db.execute('''    //Create Friends table
-      CREATE TABLE $friendTable (
-        $friendUserId INTEGER,
-        $friendFriendId INTEGER,
-        PRIMARY KEY ($friendUserId, $friendFriendId),
-        FOREIGN KEY ($friendUserId) REFERENCES $userTable($userId),
-        FOREIGN KEY ($friendFriendId) REFERENCES $userTable($userId)
-      )
-    ''');
+  updateData(String SQL) async {
+    Database? mydata = await MyDataBase;
+    int response = await mydata!.rawUpdate(SQL);
+    return response;
   }
 
 //CRUD OPERATIONS
