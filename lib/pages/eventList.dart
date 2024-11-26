@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/navigationMenu.dart';
-
+import 'sharedPrefs.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class EventListPage extends StatefulWidget {
@@ -13,7 +14,10 @@ class EventListPage extends StatefulWidget {
 class _EventListPageState extends State<EventListPage> {
   @override
   Widget build(BuildContext context) {
+    var preferences = Provider.of<PreferencesService>(context);
     return Scaffold(
+      backgroundColor:
+      preferences.isDarkMode ?  Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
         title: Center(
           child: Text(
