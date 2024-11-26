@@ -35,6 +35,11 @@ class _HomePageState extends State<HomePage> {
       friends = userFriends;
     });
   }
+  void _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Clear user session
+    Navigator.pushReplacementNamed(context, '/login'); // Redirect to login page
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,23 +72,48 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           // Dark Mode Toggle using SwitchListTile
-          SwitchListTile(
-            title: Text(
-              'Dark Mode',
-              style: TextStyle(
-                color: preferences.isDarkMode ? Colors.white : Colors.black,
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton(
+                  onPressed: _logout,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: preferences.isDarkMode
+                        ? Colors.grey
+                        : Color(0xff273331),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  ),
+                  child: const Text(
+                    'Log Out',
+                    style: TextStyle(fontSize: 16, color: Color(0xFFD8D7D7)),
+                  ),
+                ),
+                SizedBox(width: 84,),
+                Expanded(
+                  child: SwitchListTile(
+                    title: Text(
+                      'Dark Mode',
+                      style: TextStyle(
+                        color:
+                        preferences.isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    value: preferences.isDarkMode,
+                    onChanged: (value) {
+                      setState(() {
+                        preferences.setDarkMode(value);
+                      });
+                    },
+                    activeColor: Colors.white,
+                    activeTrackColor: Colors.grey,
+                    inactiveThumbColor: Color(0xFFF6F6F6),
+                    inactiveTrackColor: Color(0xff273331),
+                  ),
+                ),
+              ],
             ),
-            value: preferences.isDarkMode,
-            onChanged: (value) {
-              setState(() {
-                preferences.setDarkMode(value);
-              });
-            },
-            activeColor: Colors.white,
-            activeTrackColor: Colors.grey,
-            inactiveThumbColor: Color(0xFFF6F6F6),
-            inactiveTrackColor: Color(0xff273331),
           ),
 
           Padding(
