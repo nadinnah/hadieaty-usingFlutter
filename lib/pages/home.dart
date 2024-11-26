@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'sharedPrefs.dart';
 import 'package:provider/provider.dart';
 import 'package:hadieaty/Localdb/localDb.dart';
+import 'addFriend.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,20 +26,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _loadFriends() async {
-    // Assuming you have the current user's ID, replace it with actual user ID
-    int currentUserId = 1; // Example: current user ID is 1
-    var nonAdminUsers = await _localDatabase.getNonAdminUsers();
+    int currentUserId = 1; // Example: replace with actual current user ID
     var userFriends = await _localDatabase.getFriends(currentUserId);
 
-    // Filter out the non-admin friends
+    // Update state to refresh UI
     setState(() {
       friends = userFriends;
     });
   }
+
   void _logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Clear user session
-    Navigator.pushReplacementNamed(context, '/login'); // Redirect to login page
+    String? userEmail = prefs.getString('userEmail');
+
+    if (userEmail != null) {
+      await _localDatabase.updateData(
+          '''UPDATE Users SET role = 0 WHERE email = "$userEmail"''');
+      print('User role reset to 0');
+    }
+
+    await prefs.clear();
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -46,7 +54,7 @@ class _HomePageState extends State<HomePage> {
     var preferences = Provider.of<PreferencesService>(context);
     return Scaffold(
       backgroundColor:
-          preferences.isDarkMode ? Color(0xff1e1e1e) : const Color(0xffefefef),
+      preferences.isDarkMode ? Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 0,
@@ -71,7 +79,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          // Dark Mode Toggle using SwitchListTile
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
             child: Row(
@@ -90,7 +97,7 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(fontSize: 16, color: Color(0xFFD8D7D7)),
                   ),
                 ),
-                SizedBox(width: 84,),
+                SizedBox(width: 84),
                 Expanded(
                   child: SwitchListTile(
                     title: Text(
@@ -115,15 +122,21 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 IconButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/addFriend');
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddFriendPage(
+                          onFriendAdded: _loadFriends,
+                        ),
+                      ),
+                    );
                   },
                   icon: Icon(
                     Icons.person_add,
@@ -154,7 +167,7 @@ class _HomePageState extends State<HomePage> {
                         Text(
                           'Create new event/list',
                           style:
-                              TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
+                          TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
                         ),
                       ],
                     ),
@@ -168,38 +181,16 @@ class _HomePageState extends State<HomePage> {
               itemCount: friends.length,
               itemBuilder: (context, index) {
                 return Card(
-                  color: Color(0xfffbfafa),
-                  margin: EdgeInsets.fromLTRB(30, 10, 30, 10),
+                  color: Color(0xffffffff),
+                  margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                   child: ListTile(
-                    contentPadding: EdgeInsets.all(15.0),
-                    onTap: () {},
-                    leading: CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.black,
-                      backgroundImage: friends[index]['profilePic'] != null
-                          ? NetworkImage(friends[index]['profilePic'])
-                          : null,
-                    ),
                     title: Text(
-                      friends[index]['name'],
-                      style: TextStyle(
-                          color: preferences.isDarkMode
-                              ? Colors.black
-                              : Colors.black),
+                      friends[index]['name'] ?? "Unknown",
+                      style: TextStyle(color: Colors.black),
                     ),
                     subtitle: Text(
-                      'Phone number: ${friends[index]['number']}',
-                      style: TextStyle(
-                          color: preferences.isDarkMode
-                              ? Colors.black
-                              : Colors.black),
-                    ),
-                    trailing: Text(
-                      'Upcoming events:',
-                      style: TextStyle(
-                          color: preferences.isDarkMode
-                              ? Colors.black
-                              : Colors.black),
+                      friends[index]['number'].toString() ,  // Empty string if 'number' is null
+                      style: TextStyle(color: Colors.black),
                     ),
                   ),
                 );
@@ -208,7 +199,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationMenu(),
+      bottomNavigationBar:NavigationMenu(),
     );
   }
 }

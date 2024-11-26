@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
         '/giftList': (context) => const GiftList(),
         '/login': (context) => const LoginPage(),
         '/eventList': (context) => const EventListPage(),
-        '/addFriend': (context) => AddFriendPage(),
+        '/addFriend': (context) => AddFriendPage(onFriendAdded: () {}),
         '/register': (context) => RegisterPage(),
       },
     );
