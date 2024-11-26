@@ -3,6 +3,7 @@ import 'package:hadieaty/Localdb/localDb.dart';
 import 'sharedPrefs.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -20,16 +21,17 @@ class _LoginPageState extends State<LoginPage> {
     var userResult = await localDatabase
         .readData('''SELECT * FROM Users WHERE email = "$email"''');
 
-    print("User Result: $userResult");  // Debugging: Check if the user exists
-
     if (userResult.isNotEmpty) {
-      // User exists, validate password
       String storedPassword = userResult[0]['password'];
 
       if (storedPassword == password) {
+        // Save the user's email in shared preferences
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userEmail', email);
+
         // Make this user the admin
-        await localDatabase
-            .updateData('''UPDATE Users SET role = 1 WHERE email = "$email"''');
+        await localDatabase.updateData(
+            '''UPDATE Users SET role = 1 WHERE email = "$email"''');
         print('Admin logged in');
         Navigator.pushReplacementNamed(context, '/home');
       } else {
@@ -59,8 +61,7 @@ class _LoginPageState extends State<LoginPage> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(
-                    context, '/register'); // Navigate to register page
+                Navigator.pushNamed(context, '/register'); // Navigate to register page
               },
               child: const Text('Register'),
             ),
