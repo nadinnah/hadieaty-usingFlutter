@@ -21,19 +21,24 @@ class LocalDatabase {
 
   initialize() async {
     String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBasess.db');
+    String path = join(mypath, 'myDataBasesss.db');
     Database mydb = await openDatabase(path, version: Version,
         onCreate: (db, Version) async {
 
-          await db.execute(''' CREATE TABLE IF NOT EXIST 'Users'(
-          'id' INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-          'name' TEXT NOT NULL,
-          'email' TEXT NOT NULL,
-          'preferences' TEXT  
+          await db.execute('''CREATE TABLE Users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          preferences TEXT,
+          password TEXT NOT NULL,
+          role INTEGER NOT NULL DEFAULT 0,
+          profilePic TEXT,
+          number INTEGER NOT NULL
           )
           ''');
+          //role 0 for regular user, 1 for admin
 
-          await db.execute(''' CREATE TABLE IF NOT EXIST 'Events'(
+          await db.execute(''' CREATE TABLE IF NOT EXISTS 'Events'(
           'id' INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
           'name' TEXT NOT NULL,
           'date' TEXT NOT NULL,
@@ -93,30 +98,25 @@ class LocalDatabase {
     return response;
   }
 
-//CRUD OPERATIONS
-// CREATE/INSERT
+  // Fetch users who are not admins
+  Future<List<Map<String, dynamic>>> getNonAdminUsers() async {
+    Database? mydata = await MyDataBase;
+    String sql = "SELECT * FROM Users WHERE role != 1"; // Get users who are not admins
+    var result = await mydata!.rawQuery(sql);
+    return result;
+  }
 
-//Users: Add user profile information locally during the app setup or when the user updates their profile.
-// Events: Save new events created by the user.
-// Gifts: Save new gifts that are added to a gift list.
-// Friends: Add friends manually or from the contact list.
-
-// READ
-//Users: Fetch user profile details for the profile page.
-// Events: Fetch all events for the event list and filter them by upcoming/current/past status.
-// Gifts: Retrieve gifts associated with an event, especially when viewing a friend’s or the user’s gift list.
-// Friends: Fetch the list of friends to display on the home page.
-
-//UPDATE
-//Users: Update user profile settings or preferences.
-// Events: Modify event details, such as location, date, or description.
-// Gifts: Update gift details like status (from available to pledged), description, or price.
-// Friends: Update friendship-related data if needed, though generally, friends’ information remains stable.
-
-//DELETE
-//Users: If the user logs out, optionally clear their profile data locally.
-// Events: Delete past or irrelevant events if the user chooses to remove them.
-// Gifts: Delete gifts that are no longer part of a list or are unwanted.
-// Friends: Remove friends from the friend list if the user chooses to do so.
+  // Fetch friends of the current user (you can customize this based on your needs)
+  Future<List<Map<String, dynamic>>> getFriends(int userId) async {
+    Database? mydata = await MyDataBase;
+    String sql = '''
+      SELECT U.name, U.profilePic, U.number
+      FROM Users U
+      JOIN Friends F ON U.id = F.friendId
+      WHERE F.userId = $userId
+    ''';
+    var result = await mydata!.rawQuery(sql);
+    return result;
+  }
 
 }
