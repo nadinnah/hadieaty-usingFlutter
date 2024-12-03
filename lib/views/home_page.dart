@@ -27,11 +27,7 @@ class _HomePageState extends State<HomePage> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EventListPage(
-          friendName: 'Your Events',  // Pass the name of the user's event list
-          isOwnEvents: true,  // This indicates these are the user's own events
-          events: _userEvents,  // Pass the user's events list
-        ),
+        builder: (context) => AddEventPage()
       ),
     );
     setState(() {
