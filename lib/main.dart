@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:hadieaty/pages/addFriend.dart';
-import 'package:hadieaty/pages/eventList.dart';
-import 'package:hadieaty/pages/giftDetail.dart';
-import 'package:hadieaty/pages/giftList.dart';
-import 'package:hadieaty/pages/home.dart';
-import 'package:hadieaty/pages/login.dart';
-import 'package:hadieaty/pages/profile.dart';
-import 'package:hadieaty/pages/register.dart';
-import 'package:hadieaty/pages/sharedPrefs.dart'; // Import PreferencesService
+import 'package:hadieaty/views/add_event.dart';
+import 'package:hadieaty/views/auth/login_page.dart';
+import 'package:hadieaty/views/auth/signup_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:hadieaty/views/event_list_page.dart';
+import 'package:hadieaty/views/home_page.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => PreferencesService(), // Provide PreferencesService
-      child: const MyApp(),
-    ),
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
   );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -24,25 +22,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preferencesService = Provider.of<PreferencesService>(context);
-
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Hedieaty',
       theme: ThemeData(
-        useMaterial3: true,
-        brightness: preferencesService.isDarkMode ? Brightness.dark : Brightness.light,
+        primarySwatch: Colors.grey
+
       ),
-      initialRoute: '/login', // Set initial route
+      initialRoute: FirebaseAuth.instance.currentUser == null ? '/login' : '/home',
       routes: {
-        '/home': (context) => const HomePage(),
-        '/profile': (context) => const ProfilePage(),
-        '/giftDetails': (context) => const GiftDetailPage(),
-        '/giftList': (context) => const GiftList(),
-        '/login': (context) => const LoginPage(),
-        '/eventList': (context) => const EventListPage(),
-        '/addFriend': (context) => AddFriendPage(onFriendAdded: () {}),
-        '/register': (context) => RegisterPage(),
+        '/login':(context)=> LoginPage(),
+        '/signup':(context)=> SignupPage(),
+        '/home':(context)=> HomePage(),
+        '/eventList': (context)=> EventListPage(friendName: '', isOwnEvents: true, events: [],),
+        '/addEvent': (context) => AddEventPage(),
       },
-    );
+      );
   }
 }
+
