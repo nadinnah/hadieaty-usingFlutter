@@ -1,40 +1,50 @@
+import 'event.dart';
+import 'gift.dart';
+
 class User {
-  String uid; // Unique user ID from Firebase Authentication
-  String name; // User's name
-  String email; // User's email address
-  String phone; // User's phone number
-  String profilePicture; // URL to the user's profile picture
-  List<String> friends; // List of friend UIDs
+  String id; // Unique identifier for the user
+  String name;
+  String email;
+  bool notifications; // Notification settings (enabled/disabled)
+  List<Event> createdEvents; // List of events created by the user
+  List<Gift> pledgedGifts; // List of gifts pledged by the user
 
   User({
-    required this.uid,
+    required this.id,
     required this.name,
     required this.email,
-    required this.phone,
-    required this.profilePicture,
-    required this.friends,
+    this.notifications = true, // Default to notifications enabled
+    this.createdEvents = const [], // Default to an empty list
+    this.pledgedGifts = const [], // Default to an empty list
   });
 
-  // Factory method to create a User object from Firestore data
-  factory User.fromFirestore(String uid, Map<String, dynamic> data) {
-    return User(
-      uid: uid,
-      name: data['name'] ?? '',
-      email: data['email'] ?? '',
-      phone: data['phone'] ?? '',
-      profilePicture: data['profilePicture'] ?? '',
-      friends: List<String>.from(data['friends'] ?? []),
-    );
+  // Method to update personal information
+  void updateInfo({String? name, String? email, bool? notifications}) {
+    if (name != null) {
+      this.name = name;
+    }
+    if (email != null) {
+      this.email = email;
+    }
+    if (notifications != null) {
+      this.notifications = notifications;
+    }
   }
 
-  // Convert a User object to a Firestore-compatible map
-  Map<String, dynamic> toFirestore() {
-    return {
-      'name': name,
-      'email': email,
-      'phone': phone,
-      'profilePicture': profilePicture,
-      'friends': friends,
-    };
+  // Method to add an event
+  void addEvent(Event event) {
+    createdEvents.add(event);
   }
+
+  // Method to add a pledged gift
+  void addPledgedGift(Gift gift) {
+    pledgedGifts.add(gift);
+  }
+
+  // Method to remove a pledged gift
+  void removePledgedGift(String giftName) {
+    pledgedGifts.removeWhere((gift) => gift.name == giftName);
+  }
+
+
 }

@@ -104,7 +104,8 @@ class _HomePageState extends State<HomePage> {
                 OutlinedButton(
                   onPressed: () {
                     // Placeholder for profile action
-                    print("Your profile pressed");
+                    Navigator.pushNamed(
+                        context, '/userProfile');
                   },
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Color(0xff1e1e1e),

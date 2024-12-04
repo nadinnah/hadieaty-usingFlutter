@@ -13,6 +13,69 @@ class GiftListPage extends StatefulWidget {
 }
 
 class _GiftListPageState extends State<GiftListPage> {
+  
+  Widget? priviledge(Gift gift, int index) {
+    if (widget.isOwnEvent && gift.status != "pledged") {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () async {
+              Gift? updatedGift = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GiftDetailsPage(
+                    gift: gift,
+                    isOwnEvent: widget.isOwnEvent,
+                  ),
+                ),
+              );
+              if (updatedGift != null) {
+                setState(() {
+                  _giftsList[index] = updatedGift;
+                });
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: () {
+              setState(() {
+                _giftsList.removeAt(index);
+              });
+            },
+          ),
+        ],
+      );
+    } else if (widget.isOwnEvent && gift.status == "pledged") {
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        IconButton(
+          icon: Icon(Icons.edit),
+          onPressed: () async {
+            Gift? updatedGift = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => GiftDetailsPage(
+                  gift: gift,
+                  isOwnEvent: widget.isOwnEvent,
+                ),
+              ),
+            );
+            if (updatedGift != null) {
+              setState(() {
+                _giftsList[index] = updatedGift;
+              });
+            }
+          },
+        ),
+      ]);
+    }
+    else {
+      return null;
+    }
+  }
+
   List<Gift> _giftsList = [
     Gift(
         name: "Smartphone",
@@ -41,7 +104,8 @@ class _GiftListPageState extends State<GiftListPage> {
         itemBuilder: (context, index) {
           Gift gift = _giftsList[index];
           return Card(
-            color: gift.status == "pledged" ? Colors.red[100] : Colors.green[100],
+            color:
+                gift.status == "pledged" ? Colors.red[100] : Colors.green[100],
             child: ListTile(
               title: Text(gift.name),
               subtitle: Text(
@@ -50,40 +114,7 @@ class _GiftListPageState extends State<GiftListPage> {
                   color: gift.status == "pledged" ? Colors.red : Colors.green,
                 ),
               ),
-              trailing: widget.isOwnEvent && gift.status != "pledged"
-                  ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.edit),
-                    onPressed: () async {
-                      Gift? updatedGift = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => GiftDetailsPage(
-                            gift: gift,
-                            isOwnEvent: widget.isOwnEvent,
-                          ),
-                        ),
-                      );
-                      if (updatedGift != null) {
-                        setState(() {
-                          _giftsList[index] = updatedGift;
-                        });
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete),
-                    onPressed: () {
-                      setState(() {
-                        _giftsList.removeAt(index);
-                      });
-                    },
-                  ),
-                ],
-              )
-                  : null,
+              trailing: priviledge(gift, index)
             ),
           );
         },
