@@ -20,7 +20,15 @@ class _HomePageState extends State<HomePage> {
   String _searchQuery = "";
 
   // Dummy data for the user's events
-  List<Event> _userEvents = [];
+  List<Event> _userEvents = [ Event(
+    name: "Birthday Party",
+    description: "Join us for an exciting birthday party!",
+    date: "2024-12-25",
+    location: "Friend's House",
+    category: "Party",
+    status: "Upcoming",
+    createdAt: "2024-11-20", // Dummy created date
+  ),];
 
   void _addEvent() async {
     // Wait for the new event to be added
