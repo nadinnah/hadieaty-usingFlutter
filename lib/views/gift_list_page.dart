@@ -13,6 +13,19 @@ class GiftListPage extends StatefulWidget {
 }
 
 class _GiftListPageState extends State<GiftListPage> {
+
+  void _pledgeGift(Gift gift) {
+    if (gift.status != 'pledged') {
+      setState(() {
+        gift.status = 'pledged';
+      });
+
+      // Notify the friend (e.g., via Firebase)
+      print("Gift '${gift.name}' pledged");
+    } else {
+      print("Gift is already pledged!");
+    }
+  }
   
   Widget? priviledge(Gift gift, int index) {
     if (widget.isOwnEvent && gift.status != "pledged") {
@@ -71,7 +84,11 @@ class _GiftListPageState extends State<GiftListPage> {
         ),
       ]);
     }
-    else {
+    else if (!widget.isOwnEvent && gift.status != "pledged"){
+      return ElevatedButton(
+      onPressed: () => _pledgeGift(gift),
+      child: Text("Pledge"),
+    );} else{
       return null;
     }
   }
