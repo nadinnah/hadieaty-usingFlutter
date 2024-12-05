@@ -1,18 +1,17 @@
 class Gift {
   String name;
   String description;
+  String category;
   double price;
-  String status; // Pledged or available
+  String imageUrl;
+  String status; // available or pledged
 
-  Gift({required this.name, required this.description, required this.price, required this.status});
-
-  // Convert Firestore document to Gift object
-  factory Gift.fromFirestore(Map<String, dynamic> data) {
-    return Gift(
-      name: data['name'],
-      description: data['description'],
-      price: data['price'],
-      status: data['status'],
-    );
-  }
+  Gift({
+    required this.name,
+    required this.description,
+    required this.category,
+    required this.price,
+    required this.imageUrl,
+    this.status = 'available',
+  });
 }

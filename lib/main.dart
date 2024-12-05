@@ -5,6 +5,7 @@ import 'package:hadieaty/views/auth/signup_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hadieaty/views/event_list_page.dart';
 import 'package:hadieaty/views/home_page.dart';
+import 'package:hadieaty/views/user_profile_page.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
         '/home':(context)=> HomePage(),
         '/eventList': (context)=> EventListPage(friendName: '', isOwnEvents: true, events: [],),
         '/addEvent': (context) => AddEventPage(),
+        '/userProfile': (context)=> UserProfilePage(),
       },
       );
   }

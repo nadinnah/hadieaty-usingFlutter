@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hadieaty/views/gift_list_page.dart';
 import 'package:hadieaty/views/home_page.dart';
 import '../controllers/event_controller.dart';  // Event Controller
 import '../models/event.dart';
 import 'add_event.dart';  // Event Model
+
 
 class EventListPage extends StatefulWidget {
   final String friendName; // The name of the friend whose events we will show
@@ -153,26 +155,32 @@ class _EventListPageState extends State<EventListPage> {
                     elevation: 3,
                     margin: EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
+                      leading: widget.isOwnEvents
+                          ? IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: () => _editEvent(event.name),
+                          )
+                          : null,
                       title: Text(event.name),
                       subtitle: Text(
                         "Category: ${event.category}\nStatus: ${event.status}\nCreated At: ${event.createdAt}",
                         style: TextStyle(fontSize: 14),
                       ),
                       trailing:widget.isOwnEvents
-                          ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.edit),
-                            onPressed: () => _editEvent(event.name),
-                          ),
-                          IconButton(
+                          ? IconButton(
                             icon: Icon(Icons.delete),
                             onPressed: () => _deleteEvent(event.name),
-                          ),
-                        ],
-                      )
+                          )
                           : null,
+                      onTap:  () {
+                        // Navigate to the Event List Page and pass data
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => GiftListPage(eventName: event.name, isOwnEvent: widget.isOwnEvents)
+                          ),
+                        );
+                      },
                     ),
                   );
                 },
