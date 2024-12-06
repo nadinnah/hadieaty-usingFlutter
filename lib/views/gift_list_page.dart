@@ -1,37 +1,58 @@
 import 'package:flutter/material.dart';
+
 import '../models/gift.dart';
+import '../services/sqlite_service.dart';
 import 'gift_details_page.dart';
 
 class GiftListPage extends StatefulWidget {
   final String eventName;
   final bool isOwnEvent;
+  final int eventId;  // Pass eventId to fetch related gifts
 
-  GiftListPage({required this.eventName, required this.isOwnEvent});
+  GiftListPage({required this.eventName, required this.isOwnEvent, required this.eventId});
 
   @override
   _GiftListPageState createState() => _GiftListPageState();
 }
 
 class _GiftListPageState extends State<GiftListPage> {
+  final LocalDatabase _localDatabase = LocalDatabase();
+  List<Gift> _giftsList = [];
 
-  void _pledgeGift(Gift gift) {
+  @override
+  void initState() {
+    super.initState();
+    _loadGifts();  // Load gifts related to the event from the local database
+  }
+
+  // Load gifts related to the event from the local database
+  void _loadGifts() async {
+    var giftsData = await _localDatabase.getGiftsByEventId(widget.eventId);
+    setState(() {
+      _giftsList = giftsData.map((e) => Gift.fromMap(e)).toList();  // Include the id from the map
+    });
+  }
+
+  // Pledge a gift (change status)
+  void _pledgeGift(Gift gift) async {
     if (gift.status != 'pledged') {
       setState(() {
         gift.status = 'pledged';
       });
-
-      // Notify the friend (e.g., via Firebase)
+      await _localDatabase.updateGift(gift.id!, gift);  // Update the gift status in the database
       print("Gift '${gift.name}' pledged");
     } else {
       print("Gift is already pledged!");
     }
   }
-  
-  Widget? priviledge(Gift gift, int index) {
+
+  // Handle edit and delete buttons for gifts
+  Widget? privilege(Gift gift, int index) {
     if (widget.isOwnEvent && gift.status != "pledged") {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Edit Gift
           IconButton(
             icon: Icon(Icons.edit),
             onPressed: () async {
@@ -48,12 +69,15 @@ class _GiftListPageState extends State<GiftListPage> {
                 setState(() {
                   _giftsList[index] = updatedGift;
                 });
+                await _localDatabase.updateGift(gift.id!, updatedGift); // Update the gift in the database
               }
             },
           ),
+          // Delete Gift
           IconButton(
             icon: Icon(Icons.delete),
-            onPressed: () {
+            onPressed: () async {
+              await _localDatabase.deleteGift(gift.id!); // Delete the gift from the database
               setState(() {
                 _giftsList.removeAt(index);
               });
@@ -63,6 +87,7 @@ class _GiftListPageState extends State<GiftListPage> {
       );
     } else if (widget.isOwnEvent && gift.status == "pledged") {
       return Row(mainAxisSize: MainAxisSize.min, children: [
+        // Only edit when the gift is pledged
         IconButton(
           icon: Icon(Icons.edit),
           onPressed: () async {
@@ -79,36 +104,20 @@ class _GiftListPageState extends State<GiftListPage> {
               setState(() {
                 _giftsList[index] = updatedGift;
               });
+              await _localDatabase.updateGift(gift.id!,updatedGift); // Update the gift in the database
             }
           },
         ),
       ]);
-    }
-    else if (!widget.isOwnEvent && gift.status != "pledged"){
+    } else if (!widget.isOwnEvent && gift.status != "pledged") {
       return ElevatedButton(
-      onPressed: () => _pledgeGift(gift),
-      child: Text("Pledge"),
-    );} else{
+        onPressed: () => _pledgeGift(gift),
+        child: Text("Pledge"),
+      );
+    } else {
       return null;
     }
   }
-
-  List<Gift> _giftsList = [
-    Gift(
-        name: "Smartphone",
-        description: "A brand-new smartphone",
-        category: "Electronics",
-        price: 699.99,
-        imageUrl: "",
-        status: "available"),
-    Gift(
-        name: "Book",
-        description: "A thriller novel",
-        category: "Books",
-        price: 19.99,
-        imageUrl: "",
-        status: "pledged"),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -121,8 +130,7 @@ class _GiftListPageState extends State<GiftListPage> {
         itemBuilder: (context, index) {
           Gift gift = _giftsList[index];
           return Card(
-            color:
-                gift.status == "pledged" ? Colors.red[100] : Colors.green[100],
+            color: gift.status == "pledged" ? Colors.red[100] : Colors.green[100],
             child: ListTile(
               title: Text(gift.name),
               subtitle: Text(
@@ -131,7 +139,7 @@ class _GiftListPageState extends State<GiftListPage> {
                   color: gift.status == "pledged" ? Colors.red : Colors.green,
                 ),
               ),
-              trailing: priviledge(gift, index)
+              trailing: privilege(gift, index),
             ),
           );
         },
