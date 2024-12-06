@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
 import 'package:hadieaty/models/event.dart';
+import '../services/shared_preference.dart';
 import 'add_event.dart';
 import 'event_list_page.dart'; // Import Event List Page
 import 'package:hadieaty/controllers/home_controller.dart'; // HomeController
 import 'package:hadieaty/models/friend.dart'; // Friend Model
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart'; // For theme and preferences
 
 class HomePage extends StatefulWidget {
   @override
@@ -62,15 +64,18 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Get preferences for dark mode
+    var preferences = Provider.of<PreferencesService>(context);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) : Colors.white,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 50,
-        backgroundColor: Colors.white,
+        backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) : Colors.white,
         actions: [
           IconButton(
-            icon: Icon(Icons.exit_to_app, color: Colors.black),
+            icon: Icon(Icons.exit_to_app, color: preferences.isDarkMode ? Colors.white : Colors.black),
             onPressed: () {
               FirebaseAuth.instance.signOut(); // Perform sign-out
               Navigator.pushReplacementNamed(
@@ -91,7 +96,7 @@ class _HomePageState extends State<HomePage> {
                   style: GoogleFonts.anticDidone(
                     fontSize: 45,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xff1e1e1e),
+                    color: preferences.isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               ),
@@ -110,12 +115,36 @@ class _HomePageState extends State<HomePage> {
                     Navigator.pushNamed(context, '/userProfile');
                   },
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Color(0xff1e1e1e),
+                    backgroundColor: preferences.isDarkMode
+                        ? Colors.grey
+                        : Color(0xff273331),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
                   child: const Text(
                     'Go to your profile',
                     style: TextStyle(fontSize: 16, color: Color(0xFFD8D7D7)),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: SwitchListTile(
+                    title: Text(
+                      'Dark Mode',
+                      style: TextStyle(
+                        color:
+                        preferences.isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    value: preferences.isDarkMode,
+                    onChanged: (value) {
+                      setState(() {
+                        preferences.setDarkMode(value);
+                      });
+                    },
+                    activeColor: Colors.white,
+                    activeTrackColor: Colors.grey,
+                    inactiveThumbColor: Color(0xFFF6F6F6),
+                    inactiveTrackColor: Color(0xff273331),
                   ),
                 ),
               ],
@@ -150,7 +179,7 @@ class _HomePageState extends State<HomePage> {
                   icon: Icon(
                     Icons.person_add,
                     size: 30,
-                    color: Color(0xff1e1e1e),
+                    color: preferences.isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
                 SizedBox(
@@ -158,8 +187,10 @@ class _HomePageState extends State<HomePage> {
                   child: OutlinedButton(
                     onPressed: _addEvent,
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: Color(0xff1e1e1e),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      backgroundColor: preferences.isDarkMode
+                          ? Colors.grey
+                          : Color(0xff273331),
+                      padding: EdgeInsets.symmetric(horizontal: 8),
                     ),
                     child: const Row(
                       children: [

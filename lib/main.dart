@@ -6,16 +6,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:hadieaty/views/event_list_page.dart';
 import 'package:hadieaty/views/home_page.dart';
 import 'package:hadieaty/views/user_profile_page.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'services/shared_preference.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(ChangeNotifierProvider(
+      create: (context) => PreferencesService(), child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
