@@ -2,21 +2,42 @@ import 'event.dart';
 import 'gift.dart';
 
 class User {
-  String id; // Unique identifier for the user
+  int? id; // Unique database identifier
   String name;
   String email;
-  bool notifications; // Notification settings (enabled/disabled)
-  List<Event> createdEvents; // List of events created by the user
-  List<Gift> pledgedGifts; // List of gifts pledged by the user
+  bool notifications;
+  List<Event> createdEvents;
+  List<Gift> pledgedGifts;
 
   User({
-    required this.id,
+    this.id,
     required this.name,
     required this.email,
-    this.notifications = true, // Default to notifications enabled
-    this.createdEvents = const [], // Default to an empty list
-    this.pledgedGifts = const [], // Default to an empty list
+    this.notifications = true,
+    this.createdEvents = const [],
+    this.pledgedGifts = const [],
   });
+
+  // Convert User object to map
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'notifications': notifications ? 1 : 0, // Store as int in SQLite
+    };
+  }
+
+  // Create User object from map
+  factory User.fromMap(Map<String, dynamic> map) {
+    return User(
+      id: map['id'],
+      name: map['name'],
+      email: map['email'],
+      notifications: map['notifications'] == 1, // Convert int to bool
+    );
+  }
+
 
   // Method to update personal information
   void updateInfo({String? name, String? email, bool? notifications}) {
