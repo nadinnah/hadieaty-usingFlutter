@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
-class Authenticate {
+class AuthenticationController {
 
   Sign_in(emailAddress, password) async{
     try {

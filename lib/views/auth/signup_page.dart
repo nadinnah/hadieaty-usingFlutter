@@ -17,7 +17,7 @@ class _SignupPageState extends State<SignupPage> {
   final phoneController = TextEditingController(); // Added phone field
   final _formKey = GlobalKey<FormState>();
 
-  final Authenticate authController = Authenticate();
+  final AuthenticationController authController = AuthenticationController();
   final UserController userController = UserController();
 
   String errorMessage = '';

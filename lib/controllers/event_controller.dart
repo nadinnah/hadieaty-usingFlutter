@@ -2,30 +2,27 @@ import '../models/event.dart';
 import '../services/sqlite_service.dart';
 
 class EventController {
-  final LocalDatabase _localDatabase = LocalDatabase();
+  LocalDatabase localdb = LocalDatabase();
 
-  // Get all events
-  Future<void> addEvent(Event event) async {
-    // Insert the event into the database
-    int eventId = await _localDatabase.insertEvent(event);
-
-    // Update the event object with the generated ID
-    event.id = eventId;
+  addEvent(Event event) async {
+    int eventId = await localdb.insertEvent(event);
+    //returns the event's id when stored in database (autoincremented)
+    event.id = eventId;//can delete using that id stored
   }
 
-  // Fetch all events
-  Future<List<Event>> getEvents() async {
-    var eventData = await _localDatabase.getEvents();
+
+  getEvents() async {
+    var eventData = await localdb.getEvents();
     return eventData.map((event) => Event.fromMap(event)).toList();
   }
 
   // Update an event
   Future<void> updateEvent(Event event) async {
-    await _localDatabase.updateEvent(event);
+    await localdb.updateEvent(event);
   }
 
   // Delete an event
   Future<void> deleteEvent(int eventId) async {
-    await _localDatabase.deleteEvent(eventId);
+    await localdb.deleteEvent(eventId);
   }
 }
