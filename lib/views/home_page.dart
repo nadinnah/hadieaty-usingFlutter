@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../controllers/event_controller.dart';
-import '../models/event.dart';
+import 'package:hadieaty/controllers/event_controller.dart';
+import 'package:hadieaty/models/event.dart';
 import 'add_event.dart';
 import 'event_list_page.dart'; // Import Event List Page
 import 'package:hadieaty/controllers/home_controller.dart'; // HomeController
@@ -15,38 +15,41 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final HomeController _controller = HomeController();
+  final EventController _eventController = EventController(); // Updated controller
   List<Friend> _friendsList = [];
-  final EventController _eventController = EventController();
+  List<Event> _userEvents = [];
   String _searchQuery = "";
-
-  // Dummy data for the user's events
-  List<Event> _userEvents = [ Event(
-    name: "Birthday Party",
-    description: "Join us for an exciting birthday party!",
-    date: "2024-12-25",
-    location: "Friend's House",
-    category: "Party",
-    status: "Upcoming",
-    createdAt: "2024-11-20", // Dummy created date
-  ),];
-
-  void _addEvent() async {
-    // Wait for the new event to be added
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddEventPage()
-      ),
-    );
-    setState(() {
-      _userEvents = _eventController.getEvents(); // Update user's events list
-    });
-  }
 
   @override
   void initState() {
     super.initState();
+    _loadUserEvents();  // Load events from SQLite on initialization
     _friendsList = _controller.getFriends(); // Get list of friends
+  }
+
+  // Load events for the user
+  void _loadUserEvents() async {
+    List<Event> events = await _eventController.getEvents();  // Fetch events from SQLite
+    setState(() {
+      _userEvents = events;
+    });
+  }
+
+  // Add a new event
+  void _addEvent() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => AddEventPage()
+      ),
+    );
+    _loadUserEvents();  // Re-fetch events after adding a new one
+  }
+
+  // Delete an event
+  void _deleteEvent(int eventId) async {
+    await _eventController.deleteEvent(eventId);  // Delete the event from SQLite
+    _loadUserEvents();  // Re-fetch events after deletion
   }
 
   // Search functionality
@@ -103,14 +106,12 @@ class _HomePageState extends State<HomePage> {
               children: [
                 OutlinedButton(
                   onPressed: () {
-                    // Placeholder for profile action
-                    Navigator.pushNamed(
-                        context, '/userProfile');
+                    // Navigate to profile page
+                    Navigator.pushNamed(context, '/userProfile');
                   },
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Color(0xff1e1e1e),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
                   child: const Text(
                     'Go to your profile',
@@ -155,11 +156,7 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(
                   width: 250,
                   child: OutlinedButton(
-                    onPressed: () {
-                      _addEvent();
-                      // Placeholder for creating event functionality
-
-                    },
+                    onPressed: _addEvent,
                     style: OutlinedButton.styleFrom(
                       backgroundColor: Color(0xff1e1e1e),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -174,8 +171,7 @@ class _HomePageState extends State<HomePage> {
                         SizedBox(width: 5),
                         Text(
                           'Create new event/list',
-                          style:
-                              TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
+                          style: TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
                         ),
                       ],
                     ),
@@ -184,54 +180,47 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          Column(children: [
-            // User's Event Card (added for user's own events)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 15,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                child: InkWell(
-                  onTap: () {
-                    // Navigate to the Event List Page for the user's events
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EventListPage(
-                          friendName: 'Your Events',
-                          // Indicating this is for the user's own events
-                          isOwnEvents:
-                              true,
-                          events: _userEvents,// Flag indicating this is the user's own events
-                        ),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Your Upcoming Events',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 10),
-                        // Show the number of upcoming events
-                        Text(
-                          'Upcoming Events: ${_userEvents.length}',
-                          style: TextStyle(fontSize: 16),
-                        ),
 
-                      ],
+          // User's Event Card (for user's own events)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Card(
+              elevation: 15,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              child: InkWell(
+                onTap: () {
+                  // Navigate to the Event List Page for user's events
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EventListPage(
+                        friendName: 'Your Events',
+                        isOwnEvents: true,
+                        events: _userEvents,
+                      ),
                     ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Upcoming Events',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Upcoming Events: ${_userEvents.length}',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            )
-          ]),
+            ),
+          ),
 
           // Friends List with Search Functionality
           Expanded(
@@ -240,44 +229,32 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 var friend = _friendsList[index];
                 return Card(
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundImage: NetworkImage(friend.profilePicture),
                     ),
                     title: Text(friend.name),
-                      subtitle: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Text(
-                            friend.phone,
-                            style: const TextStyle(color: Colors.black),
-                          ),
-                        ],
-                      ),
-                    trailing:Text(
+                    subtitle: Text(friend.phone),
+                    trailing: Text(
                       friend.upcomingEventsCount > 0
                           ? "Upcoming Events: ${friend.upcomingEventsCount}"
                           : "No Upcoming Events",
                       style: TextStyle(
-                        color: friend.upcomingEventsCount > 0
-                            ? Colors.green
-                            : Colors.red,
+                        color: friend.upcomingEventsCount > 0 ? Colors.green : Colors.red,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15
+                        fontSize: 15,
                       ),
                     ),
                     onTap: () {
-                      // Navigate to the Event List Page and pass data
+                      // Navigate to the Event List Page for friend's events
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => EventListPage(
                             friendName: friend.name,
                             isOwnEvents: false,
-                            events: _eventController.getEvents(),// Pass friend's name
-                            // Dummy events data
+                            events: _userEvents, // Use the controller for friend's events
                           ),
                         ),
                       );
