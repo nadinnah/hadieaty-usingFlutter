@@ -1,92 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:hadieaty/views/gift_list_page.dart';
-import 'package:hadieaty/views/home_page.dart';
-import '../controllers/event_controller.dart';  // Event Controller
-import '../models/event.dart';
-import 'add_event.dart';  // Event Model
-
+import 'package:hadieaty/models/event.dart';
+import 'package:hadieaty/controllers/event_controller.dart';  // Import Event Controller
+import 'add_event.dart';
+import 'gift_list_page.dart';  // Add Event Page
 
 class EventListPage extends StatefulWidget {
   final String friendName; // The name of the friend whose events we will show
   final bool isOwnEvents; // Flag to indicate whether the events belong to the user
-  final List<Event> events;
+  final List<Event> events; // List of events to be displayed
+
   EventListPage({required this.friendName, required this.isOwnEvents, required this.events});
+
   @override
   _EventListPageState createState() => _EventListPageState();
 }
 
 class _EventListPageState extends State<EventListPage> {
-  EventController _controller = EventController();
-
+  final EventController _controller = EventController();
   List<Event> _eventsList = [];
   String _searchQuery = "";
 
   @override
   void initState() {
     super.initState();
-    _eventsList = widget.events; // Use the events passed via the constructor
+    _eventsList = widget.events;
   }
 
-  // Handle search functionality
-  void _searchEvents(String query) {
+  // Fetch events from SQLite database
+  void _fetchEvents() async {
+    List<Event> events = await _controller.getEvents();
     setState(() {
-      _searchQuery = query;
-      _eventsList = _controller.searchEvents(query);
-    });
-  }
-
-  // Sort events by name
-  void _sortEventsByName() {
-    setState(() {
-      _eventsList = _controller.sortByName();
-    });
-  }
-
-  // Sort events by category
-  void _sortEventsByCategory() {
-    setState(() {
-      _eventsList = _controller.sortByCategory();
-    });
-  }
-
-  // Sort events by status
-  void _sortEventsByStatus() {
-    setState(() {
-      _eventsList = _controller.sortByStatus();
+      _eventsList = events;
     });
   }
 
   // Add a new event
   void _addEvent() async {
-    // Wait for the new event to be added
     await Navigator.push(
       context,
-      MaterialPageRoute(
-          builder: (context) => AddEventPage()), // Navigate to Add Event Page
+      MaterialPageRoute(builder: (context) => AddEventPage()), // Navigate to Add Event Page
     );
+    _fetchEvents();  // Re-fetch events after adding a new one
   }
+
   // Delete an event
-  void _deleteEvent(String eventName) {
-    _controller.deleteEvent(eventName);
-    setState(() {
-      _eventsList = _controller.getEvents();
-    });
+  void _deleteEvent(int eventId) async {
+    await _controller.deleteEvent(eventId);
+    _fetchEvents();  // Re-fetch events after deletion
   }
 
   // Edit an event
-  void _editEvent(String oldName) {
-    Event updatedEvent = Event(
-      name: "Updated Event",
-      description: "Updated event description.",
-      date: "2025-02-01",
-      location: "Updated Location",
-      category: "Updated Category",
-      status: "Current",
-      createdAt: "2024-11-24", // New creation date
-    );
-    _controller.editEvent(oldName, updatedEvent);
+  void _editEvent(Event event) async {
+    await Navigator.pushNamed(
+        context, '/addEvent'); // Navigate to login page
+
+    _fetchEvents();  // Re-fetch events after editing
+  }
+
+  // Search events by name
+  void _searchEvents(String query) {
     setState(() {
-      _eventsList = _controller.getEvents();
+      _searchQuery = query;
+      _eventsList = _eventsList.where((event) => event.name.toLowerCase().contains(query.toLowerCase())).toList();
     });
   }
 
@@ -94,8 +69,7 @@ class _EventListPageState extends State<EventListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:widget.isOwnEvents?Text('${widget.friendName}'):Text('${widget.friendName}\'s Events'),
-
+        title: widget.isOwnEvents ? Text('${widget.friendName}') : Text('${widget.friendName}\'s Events'),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -111,29 +85,25 @@ class _EventListPageState extends State<EventListPage> {
               onChanged: _searchEvents,
             ),
             SizedBox(height: 10),
-            Row(children: [
-              Text('Sort:')
-            ],),
 
             // Sort buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ElevatedButton(
-                  onPressed: _sortEventsByName,
+                  onPressed: () => _sortEventsByName(),
                   child: Text('by Name'),
                 ),
                 ElevatedButton(
-                  onPressed: _sortEventsByCategory,
+                  onPressed: () => _sortEventsByCategory(),
                   child: Text('by Category'),
                 ),
                 ElevatedButton(
-                  onPressed: _sortEventsByStatus,
+                  onPressed: () => _sortEventsByStatus(),
                   child: Text('by Status'),
                 ),
               ],
             ),
-
             SizedBox(height: 10),
 
             // Add event button
@@ -148,7 +118,7 @@ class _EventListPageState extends State<EventListPage> {
             // Event list
             Expanded(
               child: ListView.builder(
-                itemCount: widget.isOwnEvents?_eventsList.length: _eventsList.length,
+                itemCount: _eventsList.length,
                 itemBuilder: (context, index) {
                   var event = _eventsList[index];
                   return Card(
@@ -157,29 +127,35 @@ class _EventListPageState extends State<EventListPage> {
                     child: ListTile(
                       leading: widget.isOwnEvents
                           ? IconButton(
-                            icon: Icon(Icons.edit),
-                            onPressed: () => _editEvent(event.name),
-                          )
+                        icon: Icon(Icons.edit),
+                        onPressed: () => _editEvent(event),
+                      )
                           : null,
                       title: Text(event.name),
                       subtitle: Text(
                         "Category: ${event.category}\nStatus: ${event.status}\nCreated At: ${event.createdAt}",
                         style: TextStyle(fontSize: 14),
                       ),
-                      trailing:widget.isOwnEvents
+                      trailing: widget.isOwnEvents
                           ? IconButton(
-                            icon: Icon(Icons.delete),
-                            onPressed: () => _deleteEvent(event.name),
-                          )
+                        icon: Icon(Icons.delete),
+                        onPressed: () => _deleteEvent(event.id!),
+                      )
                           : null,
-                      onTap:  () {
-                        // Navigate to the Event List Page and pass data
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => GiftListPage(eventName: event.name, isOwnEvent: widget.isOwnEvents)
-                          ),
-                        );
+                      onTap: () {
+                        // Navigate to the Gift List Page and pass data
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => GiftListPage(
+                                eventName: event.name,
+                                isOwnEvent: widget.isOwnEvents,
+                                eventId: event.id!, // Safe to pass because it's no longer null
+                              ),
+                            ),
+                          );
+
                       },
                     ),
                   );
@@ -190,5 +166,26 @@ class _EventListPageState extends State<EventListPage> {
         ),
       ),
     );
+  }
+
+  // Sort by name
+  void _sortEventsByName() {
+    setState(() {
+      _eventsList.sort((a, b) => a.name.compareTo(b.name));
+    });
+  }
+
+  // Sort by category
+  void _sortEventsByCategory() {
+    setState(() {
+      _eventsList.sort((a, b) => a.category.compareTo(b.category));
+    });
+  }
+
+  // Sort by status
+  void _sortEventsByStatus() {
+    setState(() {
+      _eventsList.sort((a, b) => a.status.compareTo(b.status));
+    });
   }
 }

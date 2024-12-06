@@ -1,50 +1,55 @@
-import '../models/event.dart';
-import '../models/gift.dart';
+import 'package:hadieaty/models/event.dart';
+import 'package:hadieaty/models/gift.dart';
+import 'package:hadieaty/services/sqlite_service.dart'; // LocalDatabase service
 
 class UserController {
-  // Dummy data for created events
-  List<Event> getCreatedEvents() {
-    return [
-      Event(
-        name: "Birthday Party",
-        description: "A fun birthday party",
-        date: "2025-01-01",
-        location: "Home",
-        category: "Party",
-        status: "Upcoming",
-        createdAt: "2024-12-01",
-      ),
-      Event(
-        name: "Wedding",
-        description: "A beautiful wedding",
-        date: "2025-05-15",
-        location: "Beach",
-        category: "Celebration",
-        status: "Upcoming",
-        createdAt: "2024-12-05",
-      ),
-    ];
+  final LocalDatabase _localDatabase = LocalDatabase();
+
+  Future<int> insertUser(Map<String, dynamic> userData) async {
+    try {
+      int userId = await _localDatabase.insertUser(userData);
+      print("User added to local database with ID: $userId");
+      return userId;
+    } catch (e) {
+      print("Error inserting user: $e");
+      throw Exception("Failed to add user to local database");
+    }
   }
 
-  // Dummy data for pledged gifts
-  List<Gift> getPledgedGifts() {
-    return [
-      Gift(
-        name: "Smartphone",
-        description: "A brand-new smartphone",
-        category: "Electronics",
-        price: 699.99,
-        imageUrl: "",
-        status: "pledged",
-      ),
-      Gift(
-        name: "Book",
-        description: "A thriller novel",
-        category: "Books",
-        price: 19.99,
-        imageUrl: "",
-        status: "pledged",
-      ),
-    ];
+  // Fetch user data by userId
+  Future<Map<String, dynamic>> getUserData(int userId) async {
+    var userData = await _localDatabase.getUserById(userId);
+    return userData;
+  }
+
+  // Fetch created events by userId
+  Future<List<Event>> getCreatedEvents(int userId) async {
+    var eventsData = await _localDatabase.getEventsByUserId(userId);
+    return eventsData.map((e) => Event.fromMap(e)).toList();
+  }
+
+  // Fetch pledged gifts by userId
+  Future<List<Gift>> getPledgedGifts(int userId) async {
+    var giftsData = await _localDatabase.getPledgedGiftsByUserId(userId);
+    return giftsData.map((e) => Gift.fromMap(e)).toList();
+  }
+
+  // Update user field (name, email, or notifications)
+  Future<void> updateUserField(int userId, String field, String value) async {
+    await _localDatabase.updateUserField(userId, field, value);
+  }
+
+  // Update notification preference
+  Future<void> updateUserNotifications(int userId, bool value) async {
+    await _localDatabase.updateUserNotifications(userId, value);
+  }
+
+  Future<int> getUserIdByEmail(String email) async {
+    var user = await _localDatabase.getUserByEmail(email);
+    if (user != null) {
+      return user['id']; // Return the userId
+    } else {
+      throw Exception("User not found with email: $email");
+    }
   }
 }
