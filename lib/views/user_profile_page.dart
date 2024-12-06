@@ -93,7 +93,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   // Pick a profile picture using Image Picker
   Future<void> _pickProfilePicture() async {
     // Request camera and photo permissions
-    await _requestPermissions();
+    await requestPermissions();
 
     // After permissions are granted, pick the image
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -112,10 +112,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
 
-  Future<void> _requestPermissions() async {
-    var cameraStatus = await Permission.camera.status;
-    var photosStatus = await Permission.photos.status;
-
+  requestPermissions() async {
+    PermissionStatus cameraStatus = await Permission.camera.request();
+    PermissionStatus photosStatus = await Permission.photos.request();
+    if(await Permission.camera.isPermanentlyDenied ){
+      openAppSettings();
+    }
     if (!cameraStatus.isGranted || !photosStatus.isGranted) {
       // Request permissions if not granted
       var status = await [
