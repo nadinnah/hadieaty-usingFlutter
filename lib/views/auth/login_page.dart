@@ -12,7 +12,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  Authenticate Auth = Authenticate();
+  AuthenticationController Auth = AuthenticationController();
 
   String errorMessage = '';
 
