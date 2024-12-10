@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hadieaty/controllers/auth_controller.dart';
-import 'signup_page.dart';
-import 'package:hadieaty/views/home_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -12,65 +10,159 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  AuthenticationController Auth = AuthenticationController();
+  final formKey = GlobalKey<FormState>();
+  AuthenticationController authController = AuthenticationController();
 
   String errorMessage = '';
 
-  // Login method
   Future<void> login() async {
-    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Please enter both email and password';
-      });
-      return;
-    }
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
 
-      bool status = await Auth.Sign_in(emailController.text, passwordController.text);
-      // On success, navigate to the home page (or next page)
+    if (formKey.currentState!.validate()) {
+      bool status = await authController.Sign_in(email, password);
       if (status) {
         Navigator.pushReplacementNamed(context, '/home');
-      }else{
-      setState(() {
-       errorMessage = 'Login failed: Invalid credentials';
-      });
+      } else {
+        setState(() {
+          errorMessage = 'Login failed: Invalid credentials';
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: InputDecoration(labelText: 'Password'),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: login,
-              child: Text('Login'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/signup');
-              },
-              child: Text("Don't have an account? Sign up"),
-            ),
-            if (errorMessage.isNotEmpty)
-              Text(
-                errorMessage,
-                style: TextStyle(color: Colors.red),
-              ),
-          ],
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Color(0xffefefef),
+      appBar: AppBar(
+        backgroundColor: Color(0xffefefef),
+        title: Text(
+          'Login',
+          style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
         ),
+      ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 30, 16, 0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  Row(mainAxisAlignment: MainAxisAlignment.center,
+                    children: [Text("Welcome To Hadieaty",style: GoogleFonts.anticDidone(
+                                    fontSize: 35,
+                                    fontWeight: FontWeight.w600,)),]
+                  ),
+                  SizedBox(height: 50,),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                    child: TextFormField(
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Email is required';
+                        }
+                        if (!value.contains('@') || !value.contains('.')) {
+                          return 'Enter a valid email address';
+                        }
+                        return null;
+                      },
+                      controller: emailController,
+                      decoration: InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        hintText: 'Email',
+                        fillColor: Colors.grey[50],
+                        filled: true,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                    child: TextFormField(
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Password is required';
+                        }
+                        return null;
+                      },
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        hintText: 'Password',
+                        fillColor: Colors.grey[50],
+                        filled: true,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 60),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        login();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Color(0xff273331),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 50, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Login',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/signup');
+                    },
+                    child: Text("Don't have an account? Sign up"),
+                  ),
+                  if (errorMessage.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        errorMessage,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              child: Image.asset(
+                'lib/assets/images/giftBoxes.png',
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

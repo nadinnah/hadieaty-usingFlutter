@@ -22,7 +22,6 @@ class _SignupPageState extends State<SignupPage> {
   final UserController userController = UserController();
 
   String errorMessage = '';
-  bool isLoading = false;
 
   void handleSignUp() async {
     String email = emailController.text.trim();
@@ -49,102 +48,106 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Sign Up')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Form(
-          key: formKey,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                child: TextFormField(
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Name is required';
-                    }
-                    return null;
-                  },
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Color(0xffefefef),
+      appBar: AppBar(
+        backgroundColor: Color(0xffefefef),
+          title: Text(
+        'Sign Up',
+        style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+      )),
+      body: Stack(children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Form(
+            key: formKey,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                  child: TextFormField(
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Name is required';
+                      }
+                      return null;
+                    },
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      hintText: 'Name',
+                      fillColor: Colors.grey[50],
+                      filled: true,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.deepPurple),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    hintText: 'Name',
-                    fillColor: Colors.grey[200],
-                    filled: true,
                   ),
                 ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                child: TextFormField(
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Number is required';
-                    }
-                    return null;
-                  },
-                  controller: phoneController,
-                  decoration: InputDecoration(
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
+                SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                  child: TextFormField(
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Number is required';
+                      }
+                      return null;
+                    },
+                    controller: phoneController,
+                    decoration: InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      hintText: 'Phone Number',
+                      fillColor:Colors.grey[50],
+                      filled: true,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.deepPurple),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    hintText: 'Phone Number',
-                    fillColor: Colors.grey[200],
-                    filled: true,
                   ),
                 ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                child: TextFormField(
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Email is required';
-                    }
-                    if (!value.contains('@') || !value.contains('.')) {
-                      return 'Enter a valid email address';
-                    }
-                    return null;
-                  },
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
+                SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                  child: TextFormField(
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Email is required';
+                      }
+                      if (!value.contains('@') || !value.contains('.')) {
+                        return 'Enter a valid email address';
+                      }
+                      return null;
+                    },
+                    controller: emailController,
+                    decoration: InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      hintText: 'Email',
+                      fillColor: Colors.grey[50],
+                      filled: true,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.deepPurple),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    hintText: 'Email',
-                    fillColor: Colors.grey[200],
-                    filled: true,
                   ),
                 ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                child: TextFormField(
+                SizedBox(height: 10),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 25.0, vertical: 0),
+                  child: TextFormField(
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Password is required';
@@ -154,55 +157,77 @@ class _SignupPageState extends State<SignupPage> {
                       }
                       return null;
                     },
-                  controller: passwordController,
-                  decoration: InputDecoration(
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                      borderRadius: BorderRadius.circular(12),
+                    controller: passwordController,
+                    decoration: InputDecoration(
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      hintText: 'Password',
+                      fillColor: Colors.grey[50],
+                      filled: true,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.deepPurple),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    hintText: 'Password',
-                    fillColor: Colors.grey[200],
-                    filled: true,
                   ),
                 ),
-              ),
-              SizedBox(height: 10),
-              isLoading
-                  ? CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: () {
-                        handleSignUp();
-                        if (formKey.currentState!.validate()) {
-                          nameController.clear();
-                          phoneController.clear();
-                          emailController.clear();
-                          passwordController.clear();
-                        }
-                      },
-                      child: Text('Sign Up'),
+                SizedBox(height: 60),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState!.validate()) {
+                      handleSignUp();
+                      nameController.clear();
+                      phoneController.clear();
+                      emailController.clear();
+                      passwordController.clear();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white, backgroundColor: Color(0xff273331), // Text color
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 50, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/login');
-                },
-                child: Text("Already have an account? Login"),
-              ),
-              if (errorMessage.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                  ),
                   child: Text(
-                    errorMessage,
-                    style: TextStyle(color: Colors.red),
+                    'Sign Up',
+                    style: TextStyle(fontSize: 18),
                   ),
                 ),
-            ],
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/login');
+                  },
+                  child: Text("Already have an account? Login"),
+                ),
+                if (errorMessage.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      errorMessage,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
-      ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            child: Image.asset(
+              'lib/assets/images/giftBoxes.png',
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ]),
     );
   }
 }
