@@ -28,6 +28,24 @@ class HomeController {
       phone: "+1112223333",
       upcomingEventsCount: 0,
     ),
+    Friend(
+      name: "John Doe",
+      profilePicture:"https://dummyimage.com/150x150/cccccc/ffffff.png&text=Friend",
+      phone: "+1234567890",
+      upcomingEventsCount: 3,
+    ),
+    Friend(
+      name: "Jane Smith",
+      profilePicture: "https://dummyimage.com/150x150/cccccc/ffffff.png&text=Friend",
+      phone: "+0987654321",
+      upcomingEventsCount: 1,
+    ),
+    Friend(
+      name: "Alice Brown",
+      profilePicture:"https://dummyimage.com/150x150/cccccc/ffffff.png&text=Friend",
+      phone: "+1112223333",
+      upcomingEventsCount: 0,
+    ),
   ];
 
   // Fetch all friends

@@ -7,7 +7,7 @@ class FirestoreService {
 
   // Fetch the user's upcoming events
   Future<List<Map<String, dynamic>>> getUserUpcomingEvents() async {
-    CollectionReference eventsRef = _db.collection('users').doc(userId).collection('events');
+    CollectionReference eventsRef = _db.collection('Users').doc(userId).collection('events');
     DateTime currentDate = DateTime.now();
     Timestamp currentTimestamp = Timestamp.fromDate(currentDate);
 
@@ -18,12 +18,12 @@ class FirestoreService {
 
   // Fetch friends list
   Future<List<Map<String, dynamic>>> getFriendsList() async {
-    DocumentSnapshot userDoc = await _db.collection('users').doc(userId).get();
+    DocumentSnapshot userDoc = await _db.collection('Users').doc(userId).get();
     List<String> friendsList = List<String>.from(userDoc['friends']);
 
     List<Map<String, dynamic>> friendsData = [];
     for (String friendId in friendsList) {
-      DocumentSnapshot friendDoc = await _db.collection('users').doc(friendId).get();
+      DocumentSnapshot friendDoc = await _db.collection('Users').doc(friendId).get();
       friendsData.add({
         'uid': friendId,
         'name': friendDoc['name'],
@@ -45,7 +45,7 @@ class FirestoreService {
 
   // Add a new event for the user
   Future<void> addEvent(String eventName, String eventDate, String eventDescription) async {
-    CollectionReference eventsRef = _db.collection('users').doc(userId).collection('events');
+    CollectionReference eventsRef = _db.collection('Users').doc(userId).collection('events');
     await eventsRef.add({
       'name': eventName,
       'date': eventDate,
@@ -57,7 +57,7 @@ class FirestoreService {
 
   // Add a new gift to an event
   Future<void> addGiftToEvent(String eventId, String giftName, double giftPrice) async {
-    CollectionReference giftsRef = _db.collection('users').doc(userId).collection('events').doc(eventId).collection('gifts');
+    CollectionReference giftsRef = _db.collection('Users').doc(userId).collection('events').doc(eventId).collection('gifts');
     await giftsRef.add({
       'name': giftName,
       'price': giftPrice,
@@ -68,14 +68,14 @@ class FirestoreService {
 
   // Get gifts for a specific event
   Future<List<Map<String, dynamic>>> getGiftsForEvent(String eventId) async {
-    CollectionReference giftsRef = _db.collection('users').doc(userId).collection('events').doc(eventId).collection('gifts');
+    CollectionReference giftsRef = _db.collection('Users').doc(userId).collection('events').doc(eventId).collection('gifts');
     QuerySnapshot snapshot = await giftsRef.get();
     return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
   }
 
   // Pledge a gift for an event
   Future<void> pledgeGift(String eventId, String giftId) async {
-    CollectionReference giftsRef = _db.collection('users').doc(userId).collection('events').doc(eventId).collection('gifts');
+    CollectionReference giftsRef = _db.collection('Users').doc(userId).collection('events').doc(eventId).collection('gifts');
     await giftsRef.doc(giftId).update({
       'status': 'pledged', // Update the gift status to pledged
       'pledgedBy': userId, // Store the user ID of the person pledging

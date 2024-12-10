@@ -17,7 +17,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final HomeController _controller = HomeController();
-  final EventController _eventController = EventController(); // Updated controller
+  final EventController _eventController =
+      EventController(); // Updated controller
   List<Friend> _friendsList = [];
   List<Event> _userEvents = [];
   String _searchQuery = "";
@@ -25,13 +26,14 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadUserEvents();  // Load events from SQLite on initialization
+    _loadUserEvents(); // Load events from SQLite on initialization
     _friendsList = _controller.getFriends(); // Get list of friends
   }
 
   // Load events for the user
   void _loadUserEvents() async {
-    List<Event> events = await _eventController.getEvents();  // Fetch events from SQLite
+    List<Event> events =
+        await _eventController.getEvents(); // Fetch events from SQLite
     setState(() {
       _userEvents = events;
     });
@@ -41,17 +43,15 @@ class _HomePageState extends State<HomePage> {
   void _addEvent() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-          builder: (context) => AddEventPage()
-      ),
+      MaterialPageRoute(builder: (context) => AddEventPage()),
     );
-    _loadUserEvents();  // Re-fetch events after adding a new one
+    _loadUserEvents(); // Re-fetch events after adding a new one
   }
 
   // Delete an event
   void _deleteEvent(int eventId) async {
-    await _eventController.deleteEvent(eventId);  // Delete the event from SQLite
-    _loadUserEvents();  // Re-fetch events after deletion
+    await _eventController.deleteEvent(eventId); // Delete the event from SQLite
+    _loadUserEvents(); // Re-fetch events after deletion
   }
 
   // Search functionality
@@ -68,14 +68,18 @@ class _HomePageState extends State<HomePage> {
     var preferences = Provider.of<PreferencesService>(context);
 
     return Scaffold(
-      backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
+      resizeToAvoidBottomInset: false,
+      backgroundColor:
+          preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 50,
-        backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) :Color(0xffefefef),
+        backgroundColor:
+            preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
         actions: [
           IconButton(
-            icon: Icon(Icons.exit_to_app, color: preferences.isDarkMode ? Colors.white : Colors.black),
+            icon: Icon(Icons.exit_to_app,
+                color: preferences.isDarkMode ? Colors.white : Colors.black),
             onPressed: () {
               FirebaseAuth.instance.signOut(); // Perform sign-out
               Navigator.pushReplacementNamed(
@@ -84,140 +88,146 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Header Section with HADIEATY logo/text
-          Container(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(45, 0, 45, 10),
-                child: Text(
-                  'HADIEATY',
-                  style: GoogleFonts.anticDidone(
-                    fontSize: 45,
-                    fontWeight: FontWeight.w400,
-                    color: preferences.isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Logout and Profile Button Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                OutlinedButton(
-                  onPressed: () {
-                    // Navigate to profile page
-                    Navigator.pushNamed(context, '/userProfile');
-                  },
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: preferences.isDarkMode
-                        ? Colors.grey
-                        : Color(0xff273331),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  ),
-                  child: const Text(
-                    'Go to your profile',
-                    style: TextStyle(fontSize: 16, color: Color(0xFFD8D7D7)),
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: SwitchListTile(
-                    title: Text(
-                      'Dark Mode',
-                      style: TextStyle(
-                        color:
-                        preferences.isDarkMode ? Colors.white : Colors.black,
-                      ),
+      body:
+        Column(
+          children: [
+            // Header Section with HADIEATY logo/text
+            Container(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(45, 0, 45, 10),
+                  child: Text(
+                    'HADIEATY',
+                    style: GoogleFonts.anticDidone(
+                      fontSize: 45,
+                      fontWeight: FontWeight.w400,
+                      color:
+                          preferences.isDarkMode ? Colors.white : Colors.black,
                     ),
-                    value: preferences.isDarkMode,
-                    onChanged: (value) {
-                      setState(() {
-                        preferences.setDarkMode(value);
-                      });
-                    },
-                    activeColor: Colors.white,
-                    activeTrackColor: Colors.grey,
-                    inactiveThumbColor: Color(0xFFF6F6F6),
-                    inactiveTrackColor: Color(0xff273331),
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          // Search Functionality
-          SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: TextField(
-              decoration: const InputDecoration(
-                labelText: 'Search Friends',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
               ),
-              onChanged: _searchFriends,
             ),
-          ),
 
-          // Add Friend and Create Event Buttons
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    // Placeholder for add friend functionality
-                    print("Add Friend button pressed");
-                  },
-                  icon: Icon(
-                    Icons.person_add,
-                    size: 30,
-                    color: preferences.isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                SizedBox(
-                  width: 250,
-                  child: OutlinedButton(
-                    onPressed: _addEvent,
+            // Logout and Profile Button Section
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  OutlinedButton(
+                    onPressed: () {
+                      // Navigate to profile page
+                      Navigator.pushNamed(context, '/userProfile');
+                    },
                     style: OutlinedButton.styleFrom(
                       backgroundColor: preferences.isDarkMode
                           ? Colors.grey
                           : Color(0xff273331),
-                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
                     ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.add,
-                          size: 30,
-                          color: Color(0xFFD8D7D7),
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'Create new event/list',
-                          style: TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
-                        ),
-                      ],
+                    child: const Text(
+                      'Go to your profile',
+                      style: TextStyle(fontSize: 16, color: Color(0xFFD8D7D7)),
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: SwitchListTile(
+                      title: Text(
+                        'Dark Mode',
+                        style: TextStyle(
+                          color: preferences.isDarkMode
+                              ? Colors.white
+                              : Colors.black,
+                        ),
+                      ),
+                      value: preferences.isDarkMode,
+                      onChanged: (value) {
+                        setState(() {
+                          preferences.setDarkMode(value);
+                        });
+                      },
+                      activeColor: Colors.white,
+                      activeTrackColor: Colors.grey,
+                      inactiveThumbColor: Color(0xFFF6F6F6),
+                      inactiveTrackColor: Color(0xff273331),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // User's Event Card (for user's own events)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
+            // Search Functionality
+            SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Search Friends',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: _searchFriends,
+              ),
+            ),
+
+            // Add Friend and Create Event Buttons
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      // Placeholder for add friend functionality
+                      print("Add Friend button pressed");
+                    },
+                    icon: Icon(
+                      Icons.person_add,
+                      size: 30,
+                      color:
+                          preferences.isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 250,
+                    child: OutlinedButton(
+                      onPressed: _addEvent,
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: preferences.isDarkMode
+                            ? Colors.grey
+                            : Color(0xff273331),
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.add,
+                            size: 30,
+                            color: Color(0xFFD8D7D7),
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            'Create new event/list',
+                            style: TextStyle(
+                                fontSize: 20, color: Color(0xFFD8D7D7)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // User's Event Card (for user's own events)
+            Card(
               elevation: 15,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               child: InkWell(
                 onTap: () {
                   // Navigate to the Event List Page for user's events
@@ -233,13 +243,14 @@ class _HomePageState extends State<HomePage> {
                   );
                 },
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.fromLTRB(50, 10, 50, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Your Upcoming Events',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                       SizedBox(height: 10),
                       Text(
@@ -251,52 +262,56 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-          ),
 
-          // Friends List with Search Functionality
-          Expanded(
-            child: ListView.builder(
-              itemCount: _friendsList.length,
-              itemBuilder: (context, index) {
-                var friend = _friendsList[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: NetworkImage(friend.profilePicture),
-                    ),
-                    title: Text(friend.name),
-                    subtitle: Text(friend.phone),
-                    trailing: Text(
-                      friend.upcomingEventsCount > 0
-                          ? "Upcoming Events: ${friend.upcomingEventsCount}"
-                          : "No Upcoming Events",
-                      style: TextStyle(
-                        color: friend.upcomingEventsCount > 0 ? Colors.green : Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+            // Friends List with Search Functionality
+            Expanded(
+              child: ListView.builder(
+                itemCount: _friendsList.length,
+                itemBuilder: (context, index) {
+                  var friend = _friendsList[index];
+                  return Card(
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: NetworkImage(friend.profilePicture),
                       ),
-                    ),
-                    onTap: () {
-                      // Navigate to the Event List Page for friend's events
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EventListPage(
-                            friendName: friend.name,
-                            isOwnEvents: false,
-                            events: _userEvents, // Use the controller for friend's events
-                          ),
+                      title: Text(friend.name),
+                      subtitle: Text(friend.phone),
+                      trailing: Text(
+                        friend.upcomingEventsCount > 0
+                            ? "Upcoming Events: ${friend.upcomingEventsCount}"
+                            : "No Upcoming Events",
+                        style: TextStyle(
+                          color: friend.upcomingEventsCount > 0
+                              ? Colors.green
+                              : Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
                         ),
-                      );
-                    },
-                  ),
-                );
-              },
+                      ),
+                      onTap: () {
+                        // Navigate to the Event List Page for friend's events
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EventListPage(
+                              friendName: friend.name,
+                              isOwnEvents: false,
+                              events:
+                                  _userEvents, // Use the controller for friend's events
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+
     );
   }
 }
