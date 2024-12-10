@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthenticationController {
-
+  FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Sign_in(emailAddress, password) async{
     try {
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -18,12 +19,20 @@ class AuthenticationController {
       return false;
     }
   }
-  Sign_up(emailAddress,password) async{
+
+  Sign_up(emailAddress,password, String name, String phone) async{
     try {
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailAddress,
         password: password,
       );
+      // Add user details to Firestore
+      await _firestore.collection('Users').doc(credential.user!.uid).set({
+        'name': name,
+        'email': emailAddress,
+        'phone': phone,
+        'uid': credential.user!.uid,
+      });
       return true;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {

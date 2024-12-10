@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/user_controller.dart';
+
 // User controller for local database
 import 'login_page.dart'; // To navigate to the login page
 
@@ -15,7 +16,7 @@ class _SignupPageState extends State<SignupPage> {
   final passwordController = TextEditingController();
   final nameController = TextEditingController(); // Added name field
   final phoneController = TextEditingController(); // Added phone field
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
 
   final AuthenticationController authController = AuthenticationController();
   final UserController userController = UserController();
@@ -23,77 +24,32 @@ class _SignupPageState extends State<SignupPage> {
   String errorMessage = '';
   bool isLoading = false;
 
-  // Signup method
-  Future<void> signup() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  void handleSignUp() async {
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
+    String name = nameController.text.trim();
+    String phone = phoneController.text.trim();
 
-    setState(() {
-      isLoading = true;
-      errorMessage = '';
-    });
+    bool result = await authController.Sign_up(email, password, name, phone);
 
-    try {
-      // Sign up using Firebase Authentication
-      bool status = await authController.Sign_up(
-        emailController.text.trim(),
-        passwordController.text.trim(),
+    if (result) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-up successful! Please log in.'),
+          backgroundColor: Colors.green,
+        ),
       );
-
-      if (status) {
-        // Save user data to local SQLite database
-        await userController.insertUser({
-          'name': nameController.text.trim(),
-          'email': emailController.text.trim(),
-          'preferences': '{}', // Default empty preferences
-          'password': passwordController.text.trim(), // Save hashed password ideally
-          'role': 0, // Regular user
-          'profilePic': '', // Default profile picture URL
-          'number': int.parse(phoneController.text.trim()),
-        });
-
-        // Navigate to home page after successful signup
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/home', (Route<dynamic> route) => false);
-      } else {
-        setState(() {
-          errorMessage = 'Signup failed: Email already in use.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Signup failed: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-up failed! Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  // Validation for email and password
-  String? validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Email is required';
-    }
-    final emailRegex =
-    RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    if (!emailRegex.hasMatch(value)) {
-      return 'Enter a valid email address';
-    }
-    return null;
-  }
 
-  String? validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Password is required';
-    }
-    if (value.length < 6) {
-      return 'Password must be at least 6 characters long';
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,40 +58,133 @@ class _SignupPageState extends State<SignupPage> {
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey,
+          key: formKey,
           child: Column(
             children: [
-              TextFormField(
-                controller: nameController,
-                decoration: InputDecoration(labelText: 'Full Name'),
-                validator: (value) =>
-                value == null || value.isEmpty ? 'Name is required' : null,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: TextFormField(
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.deepPurple),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    hintText: 'Name',
+                    fillColor: Colors.grey[200],
+                    filled: true,
+                  ),
+                ),
               ),
-              TextFormField(
-                controller: phoneController,
-                decoration: InputDecoration(labelText: 'Phone Number'),
-                keyboardType: TextInputType.phone,
-                validator: (value) =>
-                value == null || value.isEmpty ? 'Phone number is required' : null,
+              SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: TextFormField(
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Number is required';
+                    }
+                    return null;
+                  },
+                  controller: phoneController,
+                  decoration: InputDecoration(
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.deepPurple),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    hintText: 'Phone Number',
+                    fillColor: Colors.grey[200],
+                    filled: true,
+                  ),
+                ),
               ),
-              TextFormField(
-                controller: emailController,
-                decoration: InputDecoration(labelText: 'Email'),
-                validator: validateEmail,
+              SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: TextFormField(
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Email is required';
+                    }
+                    if (!value.contains('@') || !value.contains('.')) {
+                      return 'Enter a valid email address';
+                    }
+                    return null;
+                  },
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.deepPurple),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    hintText: 'Email',
+                    fillColor: Colors.grey[200],
+                    filled: true,
+                  ),
+                ),
               ),
-              TextFormField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(labelText: 'Password'),
-                validator: validatePassword,
+              SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                child: TextFormField(
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Password is required';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters long';
+                      }
+                      return null;
+                    },
+                  controller: passwordController,
+                  decoration: InputDecoration(
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.deepPurple),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    hintText: 'Password',
+                    fillColor: Colors.grey[200],
+                    filled: true,
+                  ),
+                ),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 10),
               isLoading
                   ? CircularProgressIndicator()
                   : ElevatedButton(
-                onPressed: signup,
-                child: Text('Sign Up'),
-              ),
+                      onPressed: () {
+                        handleSignUp();
+                        if (formKey.currentState!.validate()) {
+                          nameController.clear();
+                          phoneController.clear();
+                          emailController.clear();
+                          passwordController.clear();
+                        }
+                      },
+                      child: Text('Sign Up'),
+                    ),
               TextButton(
                 onPressed: () {
                   Navigator.pushNamed(context, '/login');
