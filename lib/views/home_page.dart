@@ -68,11 +68,11 @@ class _HomePageState extends State<HomePage> {
     var preferences = Provider.of<PreferencesService>(context);
 
     return Scaffold(
-      backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) : Colors.white,
+      backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 50,
-        backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) : Colors.white,
+        backgroundColor: preferences.isDarkMode ? Color(0xff1e1e1e) :Color(0xffefefef),
         actions: [
           IconButton(
             icon: Icon(Icons.exit_to_app, color: preferences.isDarkMode ? Colors.white : Colors.black),

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthenticationController {
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   Sign_in(emailAddress, password) async{
     try {
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -46,6 +47,7 @@ class AuthenticationController {
       return false;
     }
   }
+
   Sign_out() async{
     await FirebaseAuth.instance.signOut();
   }
