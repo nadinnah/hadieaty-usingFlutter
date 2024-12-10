@@ -177,10 +177,6 @@ class _SignupPageState extends State<SignupPage> {
                   onPressed: () {
                     if (formKey.currentState!.validate()) {
                       handleSignUp();
-                      nameController.clear();
-                      phoneController.clear();
-                      emailController.clear();
-                      passwordController.clear();
                     }
                   },
                   style: ElevatedButton.styleFrom(
