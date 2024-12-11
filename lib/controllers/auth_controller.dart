@@ -18,9 +18,14 @@ class AuthenticationController {
         await _firestore.collection('Users').doc(userId).update({
           'isOwner': true,  // Set the `isOwner` field to true
         });
-        //await _addUserToLocalDatabase(credential.user!.uid);
 
-        return true;}
+          // Fetch user data from Firestore
+          DocumentSnapshot userDoc = await _firestore.collection('Users').doc(
+              userId).get();
+
+        return true;
+
+        }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         print('No user found for that email.');
@@ -44,6 +49,24 @@ class AuthenticationController {
         'phone': phone,
         'isOwner': false,
         'uid': credential.user!.uid,
+      });
+      await _firestore.collection('Users').doc(credential.user!.uid).set({
+        'name': name,
+        'email': emailAddress,
+        'phone': phone,
+        'isOwner': false,
+        'uid': credential.user!.uid,
+      });
+
+      // Add user to local SQLite database
+      await _localDatabase.insertUser({
+        'name': name,
+        'email': emailAddress,
+        'preferences': '', // Optional field
+        'password': password, // Store securely if needed
+        'isOwner': 0, // Default to regular user
+        'profilePic': '', // Optional field
+        'number': int.parse(phone),
       });
       return true;
     } on FirebaseAuthException catch (e) {

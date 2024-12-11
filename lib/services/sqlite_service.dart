@@ -23,7 +23,7 @@ class LocalDatabase {
   // Initialize the database
   initialize() async {
     String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBasess.db');
+    String path = join(mypath, 'myDataBasess2.db');
     Database mydb = await openDatabase(path, version: Version,
         onCreate: (db, Version) async {
 
@@ -35,7 +35,7 @@ class LocalDatabase {
           email TEXT NOT NULL UNIQUE,
           preferences TEXT,
           password TEXT NOT NULL,
-          role INTEGER NOT NULL DEFAULT 0,  -- 0 for regular user, 1 for admin
+          isOwner INTEGER NOT NULL DEFAULT 0,  -- 0 for false, 1 for true
           profilePic TEXT,
           number INTEGER NOT NULL
         )
@@ -103,13 +103,7 @@ class LocalDatabase {
     return response;
   }
 
-  // Fetch all users who are not admins
-  Future<List<Map<String, dynamic>>> getNonAdminUsers() async {
-    Database? mydata = await MyDataBase;
-    String sql = "SELECT * FROM Users WHERE role != 1"; // Get users who are not admins
-    var result = await mydata!.rawQuery(sql);
-    return result;
-  }
+
 
   // Fetch events by userId
   Future<List<Map<String, dynamic>>> getEventsByUserId(int userId) async {
@@ -301,5 +295,17 @@ class LocalDatabase {
     return null; // Return null if no user is found
   }
 
+  Future<void> deleteOldDatabase() async {
+    String mypath = await getDatabasesPath();
+    String path = join(mypath, 'myDataBasess1.db');
+
+    // Delete the database file
+    if (await databaseExists(path)) {
+      await deleteDatabase(path);
+      print("Old database deleted successfully.");
+    } else {
+      print("Database does not exist, no need to delete.");
+    }
+  }
 
 }

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hadieaty/views/add_event.dart';
 import 'package:hadieaty/views/auth/login_page.dart';
@@ -28,20 +29,21 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Hedieaty',
-      theme: ThemeData(
-        primarySwatch: Colors.grey
-
-      ),
+      theme: ThemeData(primarySwatch: Colors.grey),
       home: AuthenticationWrapper(),
       routes: {
-        '/login':(context)=> LoginPage(),
-        '/signup':(context)=> SignupPage(),
-        '/home':(context)=> HomePage(),
-        '/eventList': (context)=> EventListPage(friendName: '', isOwnEvents: true, events: [],),
+        '/login': (context) => LoginPage(),
+        '/signup': (context) => SignupPage(),
+        '/home': (context) => HomePage(),
+        '/eventList': (context) => EventListPage(
+              friendName: '',
+              isOwnEvents: true,
+              events: [],
+            ),
         '/addEvent': (context) => AddEventPage(),
-        '/userProfile': (context)=> UserProfilePage(),
+        '/userProfile': (context) => UserProfilePage(),
       },
-      );
+    );
   }
 }
 
@@ -55,8 +57,34 @@ class AuthenticationWrapper extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasData) {
-          return HomePage(); // User is logged in
+          User? user = snapshot.data;
+
+          if (user != null) {
+            // Check if Firestore document exists
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(user.uid)
+                  .get(),
+              builder: (context, firestoreSnapshot) {
+                if (firestoreSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                if (firestoreSnapshot.hasError ||
+                    !firestoreSnapshot.hasData ||
+                    !firestoreSnapshot.data!.exists) {
+                  // Log out the user if no Firestore document is found
+                  FirebaseAuth.instance.signOut();
+                  return LoginPage(); // Navigate to LoginPage
+                }
+                return HomePage(); // Navigate to HomePage if Firestore document exists
+              },
+            );
+          }
         }
+
         return LoginPage(); // User is not logged in
       },
     );

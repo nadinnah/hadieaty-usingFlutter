@@ -32,10 +32,16 @@ class _SignupPageState extends State<SignupPage> {
     bool result = await authController.Sign_up(email, password, name, phone);
 
     if (result) {
-      Navigator.push(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sign-up successful! Please login.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-          builder: (context) => HomePage()));
+          builder: (context) => LoginPage()),(Route<dynamic> route) => false,);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

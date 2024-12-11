@@ -194,7 +194,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       ? FileImage(_profileImage!)
                       : (_userData['profilePic'] != null
                       ? FileImage(File(_userData['profilePic']))
-                      : AssetImage('assets/default_profile.png')
+                      : AssetImage('lib/assets/images/default_profile.png')
                   as ImageProvider),
                   child: _profileImage == null &&
                       (_userData['profilePic'] == null)
