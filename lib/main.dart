@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login':(context)=> LoginPage(),
         '/signup':(context)=> SignupPage(),
-        '/home':(context)=> HomePage(name: '',),
+        '/home':(context)=> HomePage(),
         '/eventList': (context)=> EventListPage(friendName: '', isOwnEvents: true, events: [],),
         '/addEvent': (context) => AddEventPage(),
         '/userProfile': (context)=> UserProfilePage(),
@@ -55,7 +55,7 @@ class AuthenticationWrapper extends StatelessWidget {
           return Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasData) {
-          return HomePage(name: '',); // User is logged in
+          return HomePage(); // User is logged in
         }
         return LoginPage(); // User is not logged in
       },

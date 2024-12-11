@@ -35,7 +35,7 @@ class _SignupPageState extends State<SignupPage> {
       Navigator.push(
           context,
           MaterialPageRoute(
-          builder: (context) => HomePage(name: name)));
+          builder: (context) => HomePage()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

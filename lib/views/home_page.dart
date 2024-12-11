@@ -12,8 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart'; // For theme and preferences
 
 class HomePage extends StatefulWidget {
-  final String name;
-  HomePage({required this.name});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -24,6 +23,7 @@ class _HomePageState extends State<HomePage> {
       EventController(); // Updated controller
   List<Friend> _friendsList = [];
   List<Event> _userEvents = [];
+  String _userName='';
   String _searchQuery = "";
 
   @override
@@ -31,6 +31,27 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadUserEvents(); // Load events from SQLite on initialization
     _friendsList = _controller.getFriends(); // Get list of friends
+    _getUserName();
+  }
+
+  void _getUserName() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      String userId = user.uid;
+
+      try {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
+
+        if (userDoc.exists) {
+          setState(() {
+            _userName = userDoc['name'] ?? 'Guest'; // Assign name or default to 'Guest'
+          });
+        }
+      } catch (e) {
+        print('Error fetching user name: $e');
+      }
+    }
   }
 
   // Load events for the user
@@ -135,7 +156,7 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.all(20.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
-                children: [Text('Welcome ${widget.name}')],
+                children: [Text('Welcome ${_userName}')],
               ),
             ),
             // Logout and Profile Button Section
