@@ -81,7 +81,7 @@ class _SignupPageState extends State<SignupPage> {
                     },
                     controller: nameController,
                     decoration: InputDecoration(
-                      icon: Icon(Icons.perm_contact_cal),
+                      icon: Icon(Icons.person),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
@@ -136,7 +136,7 @@ class _SignupPageState extends State<SignupPage> {
                     },
                     controller: emailController,
                     decoration: InputDecoration(
-                      icon: Icon(Icons.person),
+                      icon: Icon(Icons.email),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),

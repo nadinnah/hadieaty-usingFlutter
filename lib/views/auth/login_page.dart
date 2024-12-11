@@ -71,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       controller: emailController,
                       decoration: InputDecoration(
-                        icon: Icon(Icons.person),
+                        icon: Icon(Icons.email),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.white),
                           borderRadius: BorderRadius.circular(12),
