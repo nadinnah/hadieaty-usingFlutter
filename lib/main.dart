@@ -32,11 +32,11 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.grey
 
       ),
-      initialRoute: FirebaseAuth.instance.currentUser == null ? '/login' : '/home',
+      home: AuthenticationWrapper(),
       routes: {
         '/login':(context)=> LoginPage(),
         '/signup':(context)=> SignupPage(),
-        '/home':(context)=> HomePage(),
+        '/home':(context)=> HomePage(name: '',),
         '/eventList': (context)=> EventListPage(friendName: '', isOwnEvents: true, events: [],),
         '/addEvent': (context) => AddEventPage(),
         '/userProfile': (context)=> UserProfilePage(),
@@ -45,3 +45,20 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class AuthenticationWrapper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasData) {
+          return HomePage(name: '',); // User is logged in
+        }
+        return LoginPage(); // User is not logged in
+      },
+    );
+  }
+}

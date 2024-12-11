@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
@@ -11,6 +12,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart'; // For theme and preferences
 
 class HomePage extends StatefulWidget {
+  final String name;
+  HomePage({required this.name});
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -80,12 +83,32 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: Icon(Icons.exit_to_app,
                 color: preferences.isDarkMode ? Colors.white : Colors.black),
-            onPressed: () {
-              FirebaseAuth.instance.signOut(); // Perform sign-out
-              Navigator.pushReplacementNamed(
-                  context, '/login'); // Navigate to login page
+            onPressed: () async {
+              // Get the current user
+              User? user = FirebaseAuth.instance.currentUser;
+
+              if (user != null) {
+                String userId = user.uid;
+                try {
+                  // Update Firestore to set isOwner to false
+                  await FirebaseFirestore.instance.collection('Users').doc(userId).update({
+                    'isOwner': false, // Set isOwner to false
+                  });
+
+                  // Sign out the user
+                  await FirebaseAuth.instance.signOut();
+                  print('User signed out and isOwner set to false in Firestore.');
+
+                  // Navigate to login page
+                  Navigator.pushReplacementNamed(context, '/login');
+                } catch (e) {
+                  print('Error updating Firestore: $e');
+                }
+              } else {
+                print('No user is currently signed in.');
+              }
             },
-          ),
+          )
         ],
       ),
       body:
@@ -108,7 +131,13 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [Text('Welcome ${widget.name}')],
+              ),
+            ),
             // Logout and Profile Button Section
             Padding(
               padding:

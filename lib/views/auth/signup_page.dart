@@ -4,6 +4,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/user_controller.dart';
 
 // User controller for local database
+import '../home_page.dart';
 import 'login_page.dart'; // To navigate to the login page
 
 class SignupPage extends StatefulWidget {
@@ -17,7 +18,7 @@ class _SignupPageState extends State<SignupPage> {
   final nameController = TextEditingController(); // Added name field
   final phoneController = TextEditingController(); // Added phone field
   final formKey = GlobalKey<FormState>();
-
+  bool isVisible=false;
   final AuthenticationController authController = AuthenticationController();
   final UserController userController = UserController();
 
@@ -28,16 +29,13 @@ class _SignupPageState extends State<SignupPage> {
     String password = passwordController.text.trim();
     String name = nameController.text.trim();
     String phone = phoneController.text.trim();
-
     bool result = await authController.Sign_up(email, password, name, phone);
 
     if (result) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sign-up successful! Please log in.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+          builder: (context) => HomePage(name: name)));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -77,6 +75,7 @@ class _SignupPageState extends State<SignupPage> {
                     },
                     controller: nameController,
                     decoration: InputDecoration(
+                      icon: Icon(Icons.perm_contact_cal),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
@@ -102,6 +101,7 @@ class _SignupPageState extends State<SignupPage> {
                     },
                     controller: phoneController,
                     decoration: InputDecoration(
+                      icon: Icon(Icons.phone),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
@@ -130,6 +130,7 @@ class _SignupPageState extends State<SignupPage> {
                     },
                     controller: emailController,
                     decoration: InputDecoration(
+                      icon: Icon(Icons.person),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
@@ -157,8 +158,15 @@ class _SignupPageState extends State<SignupPage> {
                       }
                       return null;
                     },
+                    obscureText: !isVisible,
                     controller: passwordController,
                     decoration: InputDecoration(
+                      icon: Icon(Icons.lock),
+                      suffixIcon: IconButton(onPressed: (){
+                        setState(() {
+                          isVisible=!isVisible;
+                        });
+                      }, icon: Icon(isVisible?Icons.visibility:Icons.visibility_off)),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
@@ -192,11 +200,15 @@ class _SignupPageState extends State<SignupPage> {
                     style: TextStyle(fontSize: 18),
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/login');
-                  },
-                  child: Text("Already have an account? Login"),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Already have an account?"),
+                    TextButton(
+                      onPressed: () {Navigator.pushNamed(context, '/login');},
+                      child: Text("Login"),
+                    ),
+                  ],
                 ),
                 if (errorMessage.isNotEmpty)
                   Padding(
@@ -217,7 +229,7 @@ class _SignupPageState extends State<SignupPage> {
           child: Container(
             child: Image.asset(
               'lib/assets/images/giftBoxes.png',
-              height: 200,
+              height: 180,
               width: double.infinity,
               fit: BoxFit.cover,
             ),

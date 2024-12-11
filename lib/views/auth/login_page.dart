@@ -12,7 +12,7 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
   final formKey = GlobalKey<FormState>();
   AuthenticationController authController = AuthenticationController();
-
+  bool isVisible=false;
   String errorMessage = '';
 
   Future<void> login() async {
@@ -71,6 +71,7 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       controller: emailController,
                       decoration: InputDecoration(
+                        icon: Icon(Icons.person),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.white),
                           borderRadius: BorderRadius.circular(12),
@@ -95,8 +96,14 @@ class _LoginPageState extends State<LoginPage> {
                         return null;
                       },
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: !isVisible,
                       decoration: InputDecoration(
+                        icon: Icon(Icons.lock),
+                        suffixIcon: IconButton(onPressed: (){
+                          setState(() {
+                            isVisible=!isVisible;
+                          });
+                        }, icon: Icon(isVisible?Icons.visibility:Icons.visibility_off)),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.white),
                           borderRadius: BorderRadius.circular(12),
@@ -131,11 +138,15 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(fontSize: 18),
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/signup');
-                    },
-                    child: Text("Don't have an account? Sign up"),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Don't have an account?"),
+                      TextButton(
+                        onPressed: () {Navigator.pushNamed(context, '/signup');},
+                        child: Text("Signup"),
+                      ),
+                    ],
                   ),
                   if (errorMessage.isNotEmpty)
                     Padding(
@@ -156,7 +167,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Container(
               child: Image.asset(
                 'lib/assets/images/giftBoxes.png',
-                height: 200,
+                height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),

@@ -23,7 +23,7 @@ class LocalDatabase {
   // Initialize the database
   initialize() async {
     String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBasesss.db');
+    String path = join(mypath, 'myDataBasess.db');
     Database mydb = await openDatabase(path, version: Version,
         onCreate: (db, Version) async {
 
@@ -48,6 +48,7 @@ class LocalDatabase {
           name TEXT NOT NULL,
           date TEXT NOT NULL,
           location TEXT NOT NULL,
+          category TEXT,
           description TEXT,
           userId INTEGER NOT NULL,
           FOREIGN KEY (userId) REFERENCES Users (id)

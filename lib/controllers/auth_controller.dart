@@ -1,8 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hadieaty/services/sqlite_service.dart';
 
 class AuthenticationController {
+
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  LocalDatabase _localDatabase = LocalDatabase();
 
   Sign_in(emailAddress, password) async{
     try {
@@ -10,7 +13,14 @@ class AuthenticationController {
           email: emailAddress,
           password: password
       );
-      return true;
+      if (credential.user != null) {
+        String userId = credential.user!.uid;
+        await _firestore.collection('Users').doc(userId).update({
+          'isOwner': true,  // Set the `isOwner` field to true
+        });
+        //await _addUserToLocalDatabase(credential.user!.uid);
+
+        return true;}
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         print('No user found for that email.');
@@ -32,6 +42,7 @@ class AuthenticationController {
         'name': name,
         'email': emailAddress,
         'phone': phone,
+        'isOwner': false,
         'uid': credential.user!.uid,
       });
       return true;
@@ -48,7 +59,7 @@ class AuthenticationController {
     }
   }
 
-  Sign_out() async{
-    await FirebaseAuth.instance.signOut();
+  Sign_out() async {
+        await FirebaseAuth.instance.signOut();
   }
 }
