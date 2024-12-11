@@ -81,13 +81,37 @@ class LocalDatabase {
     var response = await mydata!.rawQuery(SQL);
     return response;
   }
+  Future<void> updateUserIsOwner(String email, int isOwnerValue) async {
+    final db = await MyDataBase;
 
+    await db!.update(
+      'Users',
+      {'isOwner': isOwnerValue}, // Set isOwner to the specified value
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+  }//WORKS
+
+  Future<String?> getUserNameByEmail(String email) async {
+    final db = await MyDataBase;
+    var result = await db!.query(
+      'Users',
+      columns: ['name'], // Only fetch the 'name' column
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['name'] as String; // Return the name
+    }
+    return null; // Return null if no user is found
+  }
   // Insert data into the database
   insertData(String SQL) async {
     Database? mydata = await MyDataBase;
     int response = await mydata!.rawInsert(SQL);
     return response;
-  }
+  }//WORKS
 
   // Delete data from the database
   deleteData(String SQL) async {

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
 import 'package:hadieaty/models/event.dart';
 import '../services/shared_preference.dart';
+import '../services/sqlite_service.dart';
 import 'add_event.dart';
 import 'event_list_page.dart'; // Import Event List Page
 import 'package:hadieaty/controllers/home_controller.dart'; // HomeController
@@ -23,9 +24,10 @@ class _HomePageState extends State<HomePage> {
       EventController(); // Updated controller
   List<Friend> _friendsList = [];
   List<Event> _userEvents = [];
-  String _userName='';
+  String _userName = '';
+  String _userEmail = '';
   String _searchQuery = "";
-
+  LocalDatabase _localDatabase = LocalDatabase();
   @override
   void initState() {
     super.initState();
@@ -38,19 +40,18 @@ class _HomePageState extends State<HomePage> {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      String userId = user.uid;
+      String email = user.email ?? '';
 
-      try {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
+      // Fetch user name from SQLite
+      String? name = await _localDatabase.getUserNameByEmail(email);
 
-        if (userDoc.exists) {
-          setState(() {
-            _userName = userDoc['name'] ?? 'Guest'; // Assign name or default to 'Guest'
-          });
-        }
-      } catch (e) {
-        print('Error fetching user name: $e');
-      }
+      setState(() {
+        _userName = name ?? 'Guest'; // Use fetched name or default to 'Guest'
+        _userEmail = email; // Store email for future use
+      });
+
+      // Optionally update isOwner in SQLite
+
     }
   }
 
@@ -110,11 +111,14 @@ class _HomePageState extends State<HomePage> {
 
               if (user != null) {
                 String userId = user.uid;
+                String email = user.email ?? '';
                 try {
                   // Update Firestore to set isOwner to false
                   await FirebaseFirestore.instance.collection('Users').doc(userId).update({
                     'isOwner': false, // Set isOwner to false
                   });
+                  await _localDatabase.updateUserIsOwner(email, 0);
+                  print('isOwner set to 0 in SQLite for user: $email');
 
                   // Sign out the user
                   await FirebaseAuth.instance.signOut();

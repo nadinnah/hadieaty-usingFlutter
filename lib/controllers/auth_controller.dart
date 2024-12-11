@@ -18,6 +18,7 @@ class AuthenticationController {
         await _firestore.collection('Users').doc(userId).update({
           'isOwner': true,  // Set the `isOwner` field to true
         });
+        await _localDatabase.updateUserIsOwner(emailAddress,1);
 
           // Fetch user data from Firestore
           DocumentSnapshot userDoc = await _firestore.collection('Users').doc(
