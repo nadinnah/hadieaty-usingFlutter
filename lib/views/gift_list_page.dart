@@ -7,9 +7,13 @@ import 'gift_details_page.dart';
 class GiftListPage extends StatefulWidget {
   final String eventName;
   final bool isOwnEvent;
-  final int eventId;  // Pass eventId to fetch related gifts
+  final int eventId; // Pass eventId to fetch related gifts
 
-  GiftListPage({required this.eventName, required this.isOwnEvent, required this.eventId});
+  GiftListPage({
+    required this.eventName,
+    required this.isOwnEvent,
+    required this.eventId,
+  });
 
   @override
   _GiftListPageState createState() => _GiftListPageState();
@@ -22,14 +26,14 @@ class _GiftListPageState extends State<GiftListPage> {
   @override
   void initState() {
     super.initState();
-    _loadGifts();  // Load gifts related to the event from the local database
+    _loadGifts(); // Load gifts related to the event from the local database
   }
 
   // Load gifts related to the event from the local database
   void _loadGifts() async {
     var giftsData = await _localDatabase.getGiftsByEventId(widget.eventId);
     setState(() {
-      _giftsList = giftsData.map((e) => Gift.fromMap(e)).toList();  // Include the id from the map
+      _giftsList = giftsData.map((e) => Gift.fromMap(e)).toList();
     });
   }
 
@@ -39,7 +43,7 @@ class _GiftListPageState extends State<GiftListPage> {
       setState(() {
         gift.status = 'pledged';
       });
-      await _localDatabase.updateGift(gift.id!, gift);  // Update the gift status in the database
+      await _localDatabase.updateGift(gift.id!, gift); // Update the gift status in the database
       print("Gift '${gift.name}' pledged");
     } else {
       print("Gift is already pledged!");
@@ -104,7 +108,7 @@ class _GiftListPageState extends State<GiftListPage> {
               setState(() {
                 _giftsList[index] = updatedGift;
               });
-              await _localDatabase.updateGift(gift.id!,updatedGift); // Update the gift in the database
+              await _localDatabase.updateGift(gift.id!, updatedGift); // Update the gift in the database
             }
           },
         ),
@@ -112,6 +116,10 @@ class _GiftListPageState extends State<GiftListPage> {
     } else if (!widget.isOwnEvent && gift.status != "pledged") {
       return ElevatedButton(
         onPressed: () => _pledgeGift(gift),
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Color(0xff273331),
+        ),
         child: Text("Pledge"),
       );
     } else {
@@ -122,27 +130,65 @@ class _GiftListPageState extends State<GiftListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Color(0xffefefef),
       appBar: AppBar(
-        title: Text("${widget.eventName} Gifts"),
+        backgroundColor: Color(0xffefefef),
+        title: Text(
+          "${widget.eventName} Gifts",
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
       ),
-      body: ListView.builder(
-        itemCount: _giftsList.length,
-        itemBuilder: (context, index) {
-          Gift gift = _giftsList[index];
-          return Card(
-            color: gift.status == "pledged" ? Colors.red[100] : Colors.green[100],
-            child: ListTile(
-              title: Text(gift.name),
-              subtitle: Text(
-                "Category: ${gift.category}\nPrice: \$${gift.price}\nStatus: ${gift.status}",
-                style: TextStyle(
-                  color: gift.status == "pledged" ? Colors.red : Colors.green,
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _giftsList.length,
+                    itemBuilder: (context, index) {
+                      Gift gift = _giftsList[index];
+                      return Card(
+                        elevation: 3,
+                        margin: EdgeInsets.symmetric(vertical: 8),
+                        color: gift.status == "pledged"
+                            ? Colors.red[100]
+                            : Colors.green[100],
+                        child: ListTile(
+                          title: Text(gift.name),
+                          subtitle: Text(
+                            "Category: ${gift.category}\nPrice: \$${gift.price}\nStatus: ${gift.status}",
+                            style: TextStyle(
+                              color: gift.status == "pledged"
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
+                          ),
+                          trailing: privilege(gift, index),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              trailing: privilege(gift, index),
+              ],
             ),
-          );
-        },
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              child: Image.asset(
+                'lib/assets/images/giftBoxes.png',
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
