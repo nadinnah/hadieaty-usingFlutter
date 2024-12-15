@@ -55,18 +55,8 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Add a new event
-  void _addEvent() async {
-    final updatedEvents = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AddEventPage()),
-    );
-    if (updatedEvents != null) {
-      setState(() {
-        _userEvents = updatedEvents;
-      });
-    }
-  }
+
+
 
   // Search functionality for friends
   void _searchFriends(String query) {
@@ -212,7 +202,9 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(
                   width: 250,
                   child: OutlinedButton(
-                    onPressed: _addEvent,
+                    onPressed: (){
+                      Navigator.pushNamed(context, '/addEvent');
+                    },
                     style: OutlinedButton.styleFrom(
                       backgroundColor: preferences.isDarkMode
                           ? Colors.grey
@@ -248,7 +240,7 @@ class _HomePageState extends State<HomePage> {
                         setState(() {
                           _userEvents = updatedEvents;
                         });
-                      }, userId: '',
+                      },
                     ),
                   ),
                 );
@@ -259,13 +251,11 @@ class _HomePageState extends State<HomePage> {
                 }
               },
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(50, 10, 50, 10),
+                padding: const EdgeInsets.fromLTRB(80, 10, 80, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Your Upcoming Events', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    Text('Upcoming Events: ${_userEvents.length}', style: TextStyle(fontSize: 16)),
                   ],
                 ),
               ),
@@ -277,7 +267,7 @@ class _HomePageState extends State<HomePage> {
               itemBuilder: (context, index) {
                 var friend = _friendsList[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
                   child: ListTile(
                     leading: CircleAvatar(backgroundImage: NetworkImage(friend.profilePicture)),
                     title: Text(friend.name),

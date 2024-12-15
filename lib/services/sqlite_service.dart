@@ -23,7 +23,7 @@ class LocalDatabase {
 
   Future<void> deleteOldDatabase() async {
     String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBases.db');
+    String path = join(mypath, 'myDataBase.db');
 
     // Delete the database file
     if (await databaseExists(path)) {
@@ -38,7 +38,7 @@ class LocalDatabase {
   initialize() async {
     await deleteOldDatabase();
     String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBase.db');
+    String path = join(mypath, 'myDataBase12.db');
     Database mydb = await openDatabase(path, version: Version,
         onCreate: (db, Version) async {
 

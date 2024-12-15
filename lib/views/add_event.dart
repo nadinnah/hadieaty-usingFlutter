@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import '../controllers/event_controller.dart';
 import '../models/event.dart';
 
@@ -66,32 +65,29 @@ class _AddEventPageState extends State<AddEventPage> {
         syncStatus: _syncStatus,
       );
 
-      bool isOnline = await _controller.isOnline();
       bool success;
 
-      if (isOnline) {
-        // Sync with Firebase and SQLite
-        success = widget.event == null
-            ? await _controller.addEvent(newEvent)
-            : await _controller.updateEvent(newEvent);
+      // Always attempt to add or update the event locally and sync with Firebase
+      success = widget.event == null
+          ? await _controller.addEvent(newEvent)
+          : await _controller.updateEvent(newEvent);
 
-        if (success) {
-          setState(() {
-            _syncStatus = true;
-          });
-        }
+      if (success) {
+        setState(() {
+          _syncStatus = true;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Event ${widget.event == null ? 'added' : 'updated'} successfully")),
+        );
       } else {
-        // Save only locally
-        success = await _controller.addEvent(newEvent);
-        if (success) {
-          setState(() {
-            _syncStatus = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text("No internet connection. Event saved locally.")),
-          );
-        }
+        setState(() {
+          _syncStatus = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to save event.")),
+        );
       }
 
       if (success) {

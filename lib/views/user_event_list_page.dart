@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';  // Import FirebaseAuth
 import 'package:flutter/material.dart';
 import 'package:hadieaty/models/event.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
@@ -6,12 +8,10 @@ import 'gift_list_page.dart';
 
 class UserEventListPage extends StatefulWidget {
   final List<Event> events;
-  final String userId;
   final Function(List<Event>) onEventsUpdated;
 
   UserEventListPage({
     required this.events,
-    required this.userId,
     required this.onEventsUpdated,
   });
 
@@ -29,21 +29,6 @@ class _UserEventListPageState extends State<UserEventListPage> {
   void initState() {
     super.initState();
     _eventsList = widget.events;
-    _loadEvents();
-  }
-
-  Future<void> _loadEvents() async {
-    try {
-      if (await _controller.isOnline()) {
-        await _controller.syncFirestoreToLocal(widget.userId);
-      }
-      var events = await _controller.getLocalEvents();
-      setState(() {
-        _eventsList = events;
-      });
-    } catch (e) {
-      print("Error loading events: $e");
-    }
   }
 
   Future<void> _addEvent() async {
@@ -51,19 +36,22 @@ class _UserEventListPageState extends State<UserEventListPage> {
       context,
       MaterialPageRoute(builder: (context) => AddEventPage()),
     );
-    _loadEvents();
-    widget.onEventsUpdated(_eventsList);
+    await _loadEvents();
+    widget.onEventsUpdated(_eventsList); // Notify parent widget of updates
+  }
+
+  Future<void> _loadEvents() async {
+    var events = await _controller.getLocalEvents();
+    setState(() {
+      _eventsList = events;
+    });
   }
 
   Future<void> _deleteEvent(String eventId) async {
     try {
-      if (await _controller.isOnline()) {
-        await _controller.deleteEventFromFirestore(widget.userId, eventId);
-      } else {
-        await _controller.deleteLocalEvent(int.parse(eventId));
-      }
-      _loadEvents();
-      widget.onEventsUpdated(_eventsList);
+      await _controller.deleteLocalEvent(int.parse(eventId));
+      await _loadEvents(); // Reload events after deletion
+      widget.onEventsUpdated(_eventsList); // Notify parent widget
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Event deleted successfully"),
       ));
@@ -80,7 +68,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
       context,
       MaterialPageRoute(builder: (context) => AddEventPage(event: event)),
     );
-    _loadEvents();
+    await _loadEvents();
   }
 
   void _searchEvents(String query) {
@@ -114,6 +102,51 @@ class _UserEventListPageState extends State<UserEventListPage> {
         break;
     }
   }
+
+  Future<void> _publishEventsToFirebase() async {
+    try {
+      // Get the current authenticated user's uid
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("User is not authenticated."),
+        ));
+        return; // Prevent publishing if user is not authenticated
+      }
+
+      String userId = user.uid;  // Get the authenticated user's uid
+
+      // Check if the user document exists
+      DocumentReference userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
+      var docSnapshot = await userDocRef.get();
+
+      // If the user document doesn't exist, create it
+      if (!docSnapshot.exists) {
+        await userDocRef.set({
+          'uid': userId,  // Add basic user data (optional)
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Now publish the events
+      await _controller.publishEventsToFirebase(userId, _eventsList);
+
+      // Optionally update the user's events in Firebase or perform any post-publish actions
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Events published to Firebase!"),
+      ));
+
+      // Notify parent widget to refresh the event list (if needed)
+      widget.onEventsUpdated(_eventsList);
+
+    } catch (e) {
+      print('Error publishing events: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Error publishing events."),
+      ));
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -149,20 +182,41 @@ class _UserEventListPageState extends State<UserEventListPage> {
               onChanged: _searchEvents,
             ),
           ),
-          ElevatedButton(
-            onPressed: _addEvent,
-            style: ElevatedButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: const Color(0xff273331),
-              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: _addEvent,
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xff273331),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Add New Event',
+                  style: TextStyle(fontSize: 18),
+                ),
               ),
-            ),
-            child: const Text(
-              'Add New Event',
-              style: TextStyle(fontSize: 18),
-            ),
+              SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: _publishEventsToFirebase,
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xff273331),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Publish Events to Firebase',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
           ),
           Expanded(
             child: ListView.builder(
@@ -171,7 +225,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
                 var event = _eventsList[index];
                 return Card(
                   elevation: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                   child: ListTile(
                     leading: IconButton(
                       icon: const Icon(Icons.edit),
@@ -186,18 +240,6 @@ class _UserEventListPageState extends State<UserEventListPage> {
                       icon: const Icon(Icons.delete),
                       onPressed: () => _deleteEvent(event.id.toString()),
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => GiftListPage(
-                            eventName: event.name,
-                            isOwnEvent: true,
-                            eventId: event.id!,
-                          ),
-                        ),
-                      );
-                    },
                   ),
                 );
               },
