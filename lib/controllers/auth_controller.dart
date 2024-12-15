@@ -43,14 +43,7 @@ class AuthenticationController {
         email: emailAddress,
         password: password,
       );
-      // Add user details to Firestore
-      await _firestore.collection('Users').doc(credential.user!.uid).set({
-        'name': name,
-        'email': emailAddress,
-        'phone': phone,
-        'isOwner': false,
-        'uid': credential.user!.uid,
-      });
+
       await _firestore.collection('Users').doc(credential.user!.uid).set({
         'name': name,
         'email': emailAddress,

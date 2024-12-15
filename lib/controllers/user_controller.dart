@@ -24,7 +24,7 @@ class UserController {
 
   // Fetch created events by userId
   Future<List<Event>> getCreatedEvents(int userId) async {
-    var eventsData = await _localDatabase.getEventsByUserId(userId);
+    var eventsData = await _localDatabase.getEventsByUserId(userId as String);
     return eventsData.map((e) => Event.fromMap(e)).toList();
   }
 

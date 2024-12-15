@@ -175,19 +175,7 @@ class _GiftListPageState extends State<GiftListPage> {
               ],
             ),
           ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              child: Image.asset(
-                'lib/assets/images/giftBoxes.png',
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+
         ],
       ),
     );

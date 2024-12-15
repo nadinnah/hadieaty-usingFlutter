@@ -1,19 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/event.dart'; // Ensure this imports your Event model
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   // Fetch the user's upcoming events
-  Future<List<Map<String, dynamic>>> getUserUpcomingEvents() async {
+  Future<List<Event>> getUserUpcomingEvents() async {
     CollectionReference eventsRef = _db.collection('Users').doc(userId).collection('events');
     DateTime currentDate = DateTime.now();
     Timestamp currentTimestamp = Timestamp.fromDate(currentDate);
 
     // Fetch events where the date is after the current date
     QuerySnapshot snapshot = await eventsRef.where('date', isGreaterThan: currentTimestamp).get();
-    return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+
+    // Convert Firestore documents to Event objects
+    return snapshot.docs
+        .map((doc) => Event.fromMap(doc.data() as Map<String, dynamic>))
+        .toList();
   }
 
   // Fetch friends list
@@ -35,7 +40,7 @@ class FirestoreService {
 
   // Fetch the number of upcoming events for a friend
   Future<int> getUpcomingEventsCount(String friendId) async {
-    CollectionReference eventsRef = _db.collection('users').doc(friendId).collection('events');
+    CollectionReference eventsRef = _db.collection('Users').doc(friendId).collection('events');
     DateTime currentDate = DateTime.now();
     Timestamp currentTimestamp = Timestamp.fromDate(currentDate);
 
@@ -44,15 +49,11 @@ class FirestoreService {
   }
 
   // Add a new event for the user
-  Future<void> addEvent(String eventName, String eventDate, String eventDescription) async {
+  Future<void> addEvent(Event event) async {
     CollectionReference eventsRef = _db.collection('Users').doc(userId).collection('events');
-    await eventsRef.add({
-      'name': eventName,
-      'date': eventDate,
-      'description': eventDescription,
-      'createdAt': FieldValue.serverTimestamp(),
-      'owner': userId,  // Store the user ID who owns this event
-    });
+
+    // Convert the Event object to a map and add it to Firestore
+    await eventsRef.add(event.toMap());
   }
 
   // Add a new gift to an event

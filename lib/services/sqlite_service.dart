@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:firebase_auth/firebase_auth.dart';  // Add Firebase Auth dependency
 
 import '../models/event.dart';
 import '../models/gift.dart';
@@ -20,15 +21,29 @@ class LocalDatabase {
 
   int Version = 1;
 
+  Future<void> deleteOldDatabase() async {
+    String mypath = await getDatabasesPath();
+    String path = join(mypath, 'myDataBases.db');
+
+    // Delete the database file
+    if (await databaseExists(path)) {
+      await deleteDatabase(path);
+      print("Old database deleted successfully.");
+    } else {
+      print("Database does not exist, no need to delete.");
+    }
+  }
+
   // Initialize the database
   initialize() async {
+    await deleteOldDatabase();
     String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBasess2.db');
+    String path = join(mypath, 'myDataBase.db');
     Database mydb = await openDatabase(path, version: Version,
         onCreate: (db, Version) async {
 
           // Users Table
-          await db.execute('''
+          await db.execute(''' 
         CREATE TABLE IF NOT EXISTS Users (
           id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
           name TEXT NOT NULL,
@@ -42,21 +57,24 @@ class LocalDatabase {
       ''');
 
           // Events Table
-          await db.execute('''
+          await db.execute(''' 
         CREATE TABLE IF NOT EXISTS Events (
           id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           date TEXT NOT NULL,
           location TEXT NOT NULL,
+          status TEXT,
           category TEXT,
           description TEXT,
-          userId INTEGER NOT NULL,
+          createdAt TEXT, 
+          syncStatus TEXT NOT NULL DEFAULT 'unsynced', 
+          userId TEXT NOT NULL,  -- Change to TEXT to store Firestore `uid`
           FOREIGN KEY (userId) REFERENCES Users (id)
         )
       ''');
 
           // Gifts Table
-          await db.execute('''
+          await db.execute(''' 
         CREATE TABLE IF NOT EXISTS Gifts (
           id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -81,6 +99,35 @@ class LocalDatabase {
     var response = await mydata!.rawQuery(SQL);
     return response;
   }
+
+
+  // Fetch events by userId (Firestore `uid`)
+  Future<List<Map<String, dynamic>>> getEventsByUserId(String userId) async {
+    Database? mydata = await MyDataBase;
+    String sql = '''
+      SELECT * FROM Events WHERE userId = '$userId'
+    ''';  // Query using the Firestore `uid` (String)
+    var result = await mydata!.rawQuery(sql);
+    return result;
+  }
+
+
+
+  // Insert user
+  Future<int> insertUser(Map<String, dynamic> userData) async {
+    final db = await MyDataBase;
+    return await db!.insert('Users', userData);
+  }
+
+  // Example of inserting an event using the Firebase UID
+  Future<void> addEventForLoggedInUser(Event event) async {
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? "guest";  // Fetch userId (Firestore UID)
+    event.userId = userId;  // Assign userId to event
+
+    // Now insert event into the database
+    await insertEvent(event);
+  }
+
   Future<void> updateUserIsOwner(String email, int isOwnerValue) async {
     final db = await MyDataBase;
 
@@ -129,17 +176,6 @@ class LocalDatabase {
 
 
 
-  // Fetch events by userId
-  Future<List<Map<String, dynamic>>> getEventsByUserId(int userId) async {
-    Database? mydata = await MyDataBase;
-    String sql = '''
-      SELECT * FROM Events WHERE userId = $userId
-    ''';
-    var result = await mydata!.rawQuery(sql);
-    return result;
-  }
-
-
 
   // Fetch events and their associated gifts for the user
   Future<List<Map<String, dynamic>>> getEventsAndGiftsByUserId(int userId) async {
@@ -153,10 +189,6 @@ class LocalDatabase {
     return result;
   }
 
-  Future<int> insertUser(Map<String, dynamic> userData) async {
-    final db = await MyDataBase; // Access the database instance
-    return await db!.insert('Users', userData); // Insert the user data into the Users table
-  }
 
 //EVENTS:
   Future<int> insertEvent(Event event) async {
@@ -319,17 +351,5 @@ class LocalDatabase {
     return null; // Return null if no user is found
   }
 
-  Future<void> deleteOldDatabase() async {
-    String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBasess1.db');
-
-    // Delete the database file
-    if (await databaseExists(path)) {
-      await deleteDatabase(path);
-      print("Old database deleted successfully.");
-    } else {
-      print("Database does not exist, no need to delete.");
-    }
-  }
 
 }
