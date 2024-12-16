@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
+import 'package:hadieaty/controllers/friend_controller.dart';
 import 'package:hadieaty/models/event.dart';
 import '../services/shared_preference.dart';
 import '../services/sqlite_service.dart';
@@ -19,6 +20,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  FriendController friendController= FriendController();
   final HomeController _controller = HomeController();
   final EventController _eventController = EventController();
   final LocalDatabase _localDatabase = LocalDatabase();
@@ -31,7 +33,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadUserEvents();
-    _friendsList = _controller.getFriends();
+    //_friendsList = _controller.getFriends();
     _getUserName();
   }
 
@@ -55,15 +57,91 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _addFriend() async {
+    TextEditingController emailController = TextEditingController();
+    String friendEmail = '';
 
+    showDialog(
+      context: context,
+      builder: (context) =>
+          AlertDialog(
+            title: Text("Add Friend by Email"),
+            content: TextField(
+              controller: emailController,
+              decoration: InputDecoration(labelText: 'Friend\'s Email'),
+              keyboardType: TextInputType.emailAddress,
+              onChanged: (value) {
+                friendEmail = value;
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  if (friendEmail.isNotEmpty) {
+                    // Try to find the user by email in Firestore
+                    var friendDoc = await FirebaseFirestore.instance
+                        .collection('Users')
+                        .where('email', isEqualTo: friendEmail)
+                        .get();
 
+                    if (friendDoc.docs.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text("No user found with that email")));
+                    } else {
+                      var friendData = friendDoc.docs.first.data();
+                      Friend friend = Friend(
+                        name: friendData['name'],
+                        profilePicture: friendData['profilePicture'] ?? '',
+                        phone: friendData['phone'] ?? '',
+                        upcomingEventsCount: friendData['upcomingEventsCount'] ??
+                            0,
+                        id: friendData['uid'],
+                      );
+
+                      // Add the friend to your user's friends list in Firestore or SQLite
+                      String userId = FirebaseAuth.instance.currentUser?.uid ??
+                          '';
+                      await FirebaseFirestore.instance
+                          .collection('Users')
+                          .doc(userId)
+                          .collection('friends')
+                          .doc(
+                          friendEmail) // Using email as a unique identifier for simplicity
+                          .set({
+                        'name': friend.name,
+                        'profilePicture': friend.profilePicture,
+                        'phone': friend.phone,
+                        'upcomingEventsCount': friend.upcomingEventsCount,
+                      });
+
+                      // Add friend to local list and refresh UI
+                      setState(() {
+                        _friendsList.add(friend);
+                      });
+                      Navigator.pop(context); // Close the dialog
+                    }
+                  }
+                },
+                child: Text("Add Friend"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog without action
+                },
+                child: Text("Cancel"),
+              ),
+            ],
+          ),
+    );
+  }
 
   // Search functionality for friends
-  void _searchFriends(String query) {
-    setState(() {
-      _friendsList = _controller.searchFriends(query);
-    });
-  }
+  // void _searchFriends(String query) {
+  //   setState(() {
+  //     _friendsList = _controller.searchFriends(query);
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +217,8 @@ class _HomePageState extends State<HomePage> {
                     backgroundColor: preferences.isDarkMode
                         ? Colors.grey
                         : Color(0xff273331),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                   ),
                   child: const Text(
                     'Go to your profile',
@@ -181,7 +260,7 @@ class _HomePageState extends State<HomePage> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: _searchFriends,
+              // onChanged: //_searchFriends,
             ),
           ),
           Padding(
@@ -190,9 +269,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 IconButton(
-                  onPressed: () {
-                    print("Add Friend button pressed");
-                  },
+                  onPressed: _addFriend,
                   icon: Icon(
                     Icons.person_add,
                     size: 30,
@@ -202,7 +279,7 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(
                   width: 250,
                   child: OutlinedButton(
-                    onPressed: (){
+                    onPressed: () {
                       Navigator.pushNamed(context, '/addEvent');
                     },
                     style: OutlinedButton.styleFrom(
@@ -217,7 +294,8 @@ class _HomePageState extends State<HomePage> {
                         SizedBox(width: 5),
                         Text(
                           'Create new event/list',
-                          style: TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
+                          style:
+                          TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
                         ),
                       ],
                     ),
@@ -228,20 +306,22 @@ class _HomePageState extends State<HomePage> {
           ),
           Card(
             elevation: 15,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             child: InkWell(
               onTap: () async {
                 final updatedEvents = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => UserEventListPage(
-                      events: _userEvents,
-                      onEventsUpdated: (updatedEvents) {
-                        setState(() {
-                          _userEvents = updatedEvents;
-                        });
-                      },
-                    ),
+                    builder: (context) =>
+                        UserEventListPage(
+                          events: _userEvents,
+                          onEventsUpdated: (updatedEvents) {
+                            setState(() {
+                              _userEvents = updatedEvents;
+                            });
+                          },
+                        ),
                   ),
                 );
                 if (updatedEvents != null) {
@@ -255,50 +335,62 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Your Upcoming Events', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text('Your Upcoming Events',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: _friendsList.length,
-              itemBuilder: (context, index) {
-                var friend = _friendsList[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
-                  child: ListTile(
-                    leading: CircleAvatar(backgroundImage: NetworkImage(friend.profilePicture)),
-                    title: Text(friend.name),
-                    subtitle: Text(friend.phone),
-                    trailing: Text(
-                      friend.upcomingEventsCount > 0
-                          ? "Upcoming Events: ${friend.upcomingEventsCount}"
-                          : "No Upcoming Events",
-                      style: TextStyle(
-                        color: friend.upcomingEventsCount > 0
-                            ? Colors.green
-                            : Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FriendEventListPage(
-                            events: [], friendName: '',
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return Text("No friends available");
+                }
+                var data = snapshot.data!.data() as Map<String, dynamic>;
+                List<dynamic> friends = data['friends'] ?? [];
+
+                // Fetch friend details here using the friend UIDs
+                return FutureBuilder<List<Friend>>(
+                  future: friendController.getFriendsDetails(friends), // Fetch friend details
+                  builder: (context, friendSnapshot) {
+                    if (friendSnapshot.connectionState == ConnectionState.waiting) {
+                      return CircularProgressIndicator();
+                    }
+                    if (!friendSnapshot.hasData || friendSnapshot.data!.isEmpty) {
+                      return Column(children: [
+                        SizedBox(height: 150,),Text("No friends found")
+                      ],);
+                    }
+                    List<Friend> friendsList = friendSnapshot.data!;
+                    return ListView.builder(
+                      itemCount: friendsList.length,
+                      itemBuilder: (context, index) {
+                        var friend = friendsList[index];
+                        return ListTile(
+                          title: Text(friend.name),
+                          subtitle: Text("Phone: ${friend.phone}"),
+                          leading: CircleAvatar(
+                            backgroundImage: NetworkImage(friend.profilePicture),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    );
+                  },
                 );
               },
             ),
-          ),
+          )
+
         ],
       ),
     );

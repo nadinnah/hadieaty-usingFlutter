@@ -1,15 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/gift.dart';
-import '../services/sqlite_service.dart';
-import 'gift_details_page.dart';
 
 class FriendGiftListPage extends StatefulWidget {
   final String eventName;
-  final int eventId; // Pass eventId to fetch related gifts
+  final int eventId; // Event ID for fetching related gifts
+  final String friendId; // Friend's User ID
 
   FriendGiftListPage({
     required this.eventName,
     required this.eventId,
+    required this.friendId,
   });
 
   @override
@@ -17,51 +19,6 @@ class FriendGiftListPage extends StatefulWidget {
 }
 
 class _FriendGiftListPageState extends State<FriendGiftListPage> {
-  final LocalDatabase _localDatabase = LocalDatabase();
-  List<Gift> _giftsList = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadGifts(); // Load gifts related to the event from the local database
-  }
-
-  // Load gifts related to the event from the local database
-  void _loadGifts() async {
-    var giftsData = await _localDatabase.getGiftsByEventId(widget.eventId);
-    setState(() {
-      _giftsList = giftsData.map((e) => Gift.fromMap(e)).toList();
-    });
-  }
-
-  // Pledge a gift (change status)
-  void _pledgeGift(Gift gift) async {
-    if (gift.status != 'pledged') {
-      setState(() {
-        gift.status = 'pledged';
-      });
-      await _localDatabase.updateTheGift(gift.id!, gift); // Update the gift status in the database
-      print("Gift '${gift.name}' pledged");
-    } else {
-      print("Gift is already pledged!");
-    }
-  }
-
-  // Display pledge button for non-pledged gifts
-  Widget _privilege(Gift gift) {
-    if (gift.status != 'pledged') {
-      return ElevatedButton(
-        onPressed: () => _pledgeGift(gift),
-        style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white,
-          backgroundColor: Color(0xff273331),
-        ),
-        child: Text("Pledge"),
-      );
-    }
-    return SizedBox.shrink();  // Return an empty box when no button is needed
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,24 +36,53 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
         child: Column(
           children: [
             Expanded(
-              child: ListView.builder(
-                itemCount: _giftsList.length,
-                itemBuilder: (context, index) {
-                  Gift gift = _giftsList[index];
-                  return Card(
-                    elevation: 3,
-                    margin: EdgeInsets.symmetric(vertical: 8),
-                    color: gift.status == "pledged" ? Colors.red[100] : Colors.green[100],
-                    child: ListTile(
-                      title: Text(gift.name),
-                      subtitle: Text(
-                        "Category: ${gift.category}\nPrice: \$${gift.price}\nStatus: ${gift.status}",
-                        style: TextStyle(
-                          color: gift.status == "pledged" ? Colors.red : Colors.green,
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(widget.friendId) // Use friend's User ID
+                    .collection('events')
+                    .doc(widget.eventId.toString()) // Use Event ID
+                    .collection('gifts')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(child: Text("No gifts available"));
+                  }
+
+                  // Convert Firestore documents to Gift objects
+                  List<Gift> gifts = snapshot.data!.docs.map((doc) {
+                    return Gift.fromMap(doc.data() as Map<String, dynamic>);
+                  }).toList();
+
+                  return ListView.builder(
+                    itemCount: gifts.length,
+                    itemBuilder: (context, index) {
+                      Gift gift = gifts[index];
+                      return Card(
+                        elevation: 3,
+                        margin: EdgeInsets.symmetric(vertical: 8),
+                        color: gift.status == "pledged"
+                            ? Colors.red[100]
+                            : Colors.green[100],
+                        child: ListTile(
+                          title: Text(gift.name),
+                          subtitle: Text(
+                            "Category: ${gift.category ?? 'N/A'}\nPrice: \$${gift.price ?? 0.0}\nStatus: ${gift.status}",
+                            style: TextStyle(
+                              color: gift.status == "pledged"
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
+                          ),
+                          trailing: gift.status == "pledged"
+                              ? Icon(Icons.check_circle, color: Colors.green)
+                              : Icon(Icons.circle, color: Colors.grey),
                         ),
-                      ),
-                      trailing: _privilege(gift),
-                    ),
+                      );
+                    },
                   );
                 },
               ),

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/models/event.dart';
 import 'friend_gift_list_page.dart';  // Import FriendGiftListPage
-import 'user_gift_list_page.dart';   // Import UserGiftListPage
 
 class FriendEventListPage extends StatelessWidget {
   final List<Event> events;
   final String friendName;
+  final String friendId; // Add friendId
 
   FriendEventListPage({
     required this.events,
     required this.friendName,
+    required this.friendId, // Include friendId as a required parameter
   });
 
   @override
@@ -37,18 +38,18 @@ class FriendEventListPage extends StatelessWidget {
                 style: const TextStyle(fontSize: 14),
               ),
               onTap: () {
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FriendGiftListPage(
-                        eventName: event.name,
-                        eventId: event.id!,
-                      ),
+                // Navigate to FriendGiftListPage with friendId
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FriendGiftListPage(
+                      eventName: event.name,
+                      eventId: event.id!, // Use event ID to fetch related gifts
+                      friendId: friendId, // Pass the friend's ID
                     ),
-                  );
-                }
-
+                  ),
+                );
+              },
             ),
           );
         },
