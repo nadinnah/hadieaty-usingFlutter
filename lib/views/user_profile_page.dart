@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:hadieaty/controllers/user_controller.dart';
 import 'package:hadieaty/models/event.dart';
 import 'package:hadieaty/models/gift.dart';
-import 'gift_list_page.dart';
+import 'package:hadieaty/views/user_gift_list_page.dart';
+import 'friend_gift_list_page.dart';
 import 'my_pledged_gifts_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -270,14 +271,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   title: Text(event.name),
                   subtitle: Text("Date: ${event.date}"),
                   onTap: () {
-                    // Navigate to event's gift list
+                    // Navigate to UserGiftListPage instead of GiftListPage
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => GiftListPage(
+                        builder: (context) => UserGiftListPage(
                           eventName: event.name,
-                          isOwnEvent: true,
-                          eventId: event.id!, // Safe to pass the ID now
+                          eventId: event.id!, // Pass eventId to the UserGiftListPage
                         ),
                       ),
                     );

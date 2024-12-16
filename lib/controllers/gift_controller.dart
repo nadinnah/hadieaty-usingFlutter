@@ -1,65 +1,112 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/gift.dart';
-
-import '../services/sqlite_service.dart';  // Import your LocalDatabase class
+import '../services/sqlite_service.dart';
 
 class GiftController {
-  final LocalDatabase _localDatabase = LocalDatabase();  // Instance of the LocalDatabase class
+  final LocalDatabase localdb;
 
-  // Get all gifts
-  Future<List<Gift>> getGifts(int eventId) async {
-    // Fetch gifts for the given event ID from the database
-    var giftData = await _localDatabase.getGiftsByEventId(eventId);
-    return giftData.map((gift) => Gift.fromMap(gift)).toList();
-  }
+  GiftController({required this.localdb});
 
-  // Search gifts by name
-  Future<List<Gift>> searchGifts(int eventId, String query) async {
-    var giftData = await _localDatabase.searchGifts(eventId, query);
-    return giftData.map((gift) => Gift.fromMap(gift)).toList();
-  }
-
-  // Sort gifts by name
-  Future<List<Gift>> sortByName(int eventId) async {
-    var giftData = await _localDatabase.getGiftsByEventId(eventId);
-    giftData.sort((a, b) => a['name'].compareTo(b['name']));
-    return giftData.map((gift) => Gift.fromMap(gift)).toList();
-  }
-
-  // Sort gifts by category
-  Future<List<Gift>> sortByCategory(int eventId) async {
-    var giftData = await _localDatabase.getGiftsByEventId(eventId);
-    giftData.sort((a, b) => a['category'].compareTo(b['category']));
-    return giftData.map((gift) => Gift.fromMap(gift)).toList();
-  }
-
-  // Sort gifts by status
-  Future<List<Gift>> sortByStatus(int eventId) async {
-    var giftData = await _localDatabase.getGiftsByEventId(eventId);
-    giftData.sort((a, b) => a['status'].compareTo(b['status']));
-    return giftData.map((gift) => Gift.fromMap(gift)).toList();
-  }
-
-  // Add a new gift
+  // Add a new gift (local database + Firebase sync)
   Future<void> addGift(Gift gift) async {
-    await _localDatabase.insertGift(gift);  // Insert the gift into the database
+    try {
+      // First, insert the gift locally with syncStatus = false
+      gift.syncStatus = false;
+      await localdb.insertGift(gift);
+
+      // Then, sync with Firebase if not already synced
+      if (gift.syncStatus == false) {
+        await _publishGiftToFirebase(gift);
+      }
+    } catch (e) {
+      print("Error adding gift: $e");
+    }
   }
 
-  // Edit an existing gift
-  Future<void> editGift(int giftId, Gift updatedGift) async {
-    await _localDatabase.updateGift(giftId, updatedGift);  // Update the gift in the database
+  // Publish a gift to Firebase and update the syncStatus
+  Future<void> _publishGiftToFirebase(Gift gift) async {
+    try {
+      var userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        print("User not authenticated");
+        return;
+      }
+
+      var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
+      var eventDocRef = userDocRef.collection('events').doc(gift.eventId.toString());
+
+      // Add the gift to Firebase
+      var docRef = await eventDocRef.collection('gifts').add(gift.toMap());
+
+      // Once published, update the gift's id and syncStatus
+      gift.id = docRef.id as int?;
+      gift.syncStatus = true;
+
+      // Update the local database with the new sync status
+      await localdb.updateGift(gift);
+    } catch (e) {
+      print("Error publishing gift to Firebase: $e");
+    }
   }
 
-  // Delete a gift by ID
-  Future<void> deleteGift(int giftId) async {
-    await _localDatabase.deleteGift(giftId);  // Delete the gift from the database
+  // Fetch all gifts for a specific event from the local database
+  Future<List<Object>> fetchGiftsForEvent(int eventId) async {
+    try {
+      return await localdb.getGiftsForEvent(eventId);
+    } catch (e) {
+      print("Error fetching gifts from local database: $e");
+      return [];
+    }
   }
 
-  // Mark a gift as pledged or available
-  Future<void> togglePledgeStatus(int giftId) async {
-    var gift = await _localDatabase.getGiftById(giftId);  // Fetch the gift by its ID
-    if (gift != null) {
-      String newStatus = gift['status'] == 'available' ? 'pledged' : 'available';
-      await _localDatabase.updateGiftStatus(giftId, newStatus);  // Update the status in the database
+  // Unified method to delete the gift from both local database and Firebase
+  Future<void> deleteGift(Gift gift) async {
+    try {
+      // Delete the gift from the local database
+      await localdb.deleteGift(gift.id!);
+
+      // If the gift is synced, delete it from Firebase as well
+      if (gift.syncStatus == true) {
+        var userId = FirebaseAuth.instance.currentUser?.uid;
+        if (userId == null) {
+          print("User not authenticated");
+          return;
+        }
+
+        var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
+        var eventDocRef = userDocRef.collection('events').doc(gift.eventId.toString());
+
+        // Delete the gift from Firebase
+        await eventDocRef.collection('gifts').doc(gift.id as String?).delete();
+      }
+    } catch (e) {
+      print("Error deleting gift: $e");
+    }
+  }
+
+  // Unified method to update the gift in both local database and Firebase
+  Future<void> updateGift(Gift gift) async {
+    try {
+      // Update the gift in local database
+      await localdb.updateGift(gift);
+
+      // If gift is synced, update it in Firebase as well
+      if (gift.syncStatus == true) {
+        var userId = FirebaseAuth.instance.currentUser?.uid;
+        if (userId == null) {
+          print("User not authenticated");
+          return;
+        }
+
+        var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
+        var eventDocRef = userDocRef.collection('events').doc(gift.eventId.toString());
+
+        // Reference the gift in Firebase and update it
+        await eventDocRef.collection('gifts').doc(gift.id as String?).update(gift.toMap());
+      }
+    } catch (e) {
+      print("Error updating gift: $e");
     }
   }
 }

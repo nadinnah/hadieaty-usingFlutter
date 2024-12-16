@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/models/event.dart';
-import 'gift_list_page.dart';
+import 'friend_gift_list_page.dart';  // Import FriendGiftListPage
+import 'user_gift_list_page.dart';   // Import UserGiftListPage
 
 class FriendEventListPage extends StatelessWidget {
   final List<Event> events;
@@ -36,17 +37,18 @@ class FriendEventListPage extends StatelessWidget {
                 style: const TextStyle(fontSize: 14),
               ),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GiftListPage(
-                      eventName: event.name,
-                      isOwnEvent: false,
-                      eventId: event.id!,
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FriendGiftListPage(
+                        eventName: event.name,
+                        eventId: event.id!,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                }
+
             ),
           );
         },

@@ -3,8 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
 import 'package:flutter/material.dart';
 import 'package:hadieaty/models/event.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
+import 'package:hadieaty/views/user_gift_list_page.dart';
 import 'add_event.dart';
-import 'gift_list_page.dart';
+import 'friend_gift_list_page.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
 
 class UserEventListPage extends StatefulWidget {
@@ -281,9 +282,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
           _loadingIndicator(), // Show loading indicator if necessary
           SizedBox(height: 20,),
           Expanded(
-            child: _eventsList.isEmpty
-                ? _emptyState() // Show empty state if no events
-                : ListView.builder(
+            child: ListView.builder(
               itemCount: _eventsList.length,
               itemBuilder: (context, index) {
                 var event = _eventsList[index];
@@ -304,11 +303,21 @@ class _UserEventListPageState extends State<UserEventListPage> {
                       icon: const Icon(Icons.delete),
                       onPressed: () => _deleteEvent(event.id.toString()),
                     ),
+                    onTap: () {
+                      // Navigate to Gift List page, passing the event ID
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => UserGiftListPage(eventId: event.id!, eventName: event.name,),
+                        ),
+                      );
+                    },
                   ),
                 );
               },
             ),
-          ),
+          )
+
         ],
       ),
     );
