@@ -7,7 +7,7 @@ import 'package:hadieaty/models/event.dart';
 import '../services/shared_preference.dart';
 import '../services/sqlite_service.dart';
 import 'add_event.dart';
-import 'package:hadieaty/controllers/home_controller.dart';
+
 import 'package:hadieaty/models/friend.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +21,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   FriendController friendController= FriendController();
-  final HomeController _controller = HomeController();
   final EventController _eventController = EventController();
   final LocalDatabase _localDatabase = LocalDatabase();
   List<Friend> _friendsList = [];
