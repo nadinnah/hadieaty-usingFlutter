@@ -29,17 +29,20 @@ class EventController {
     }
   }
 
-  Future<bool> updateEvent(Event event) async {
+  Future<bool> updateEvent(Event event, String userId) async {
     bool success = false;
     try {
       // Update Firebase
-      await _firestore
+      var eventDocRef = _firestore
+          .collection('Users')
+          .doc(userId)
           .collection('events')
-          .doc(event.id as String?) // Using the event id to update
-          .update(event.toMap());
+          .doc(event.id.toString());
+
+      await eventDocRef.update(event.toMap());
 
       // Update locally in SQLite
-      success = (await localdb.updateEvent(event)) as bool;
+      success = await localdb.updateEvent(event);
     } catch (e) {
       print('Error updating event: $e');
     }
@@ -47,13 +50,23 @@ class EventController {
   }
 
   // Delete an event from the local database
-  Future<void> deleteLocalEvent(int eventId) async {
+  Future<void> deleteLocalEvent(int eventId, String userId) async {
     try {
+      // Delete from SQLite
       await localdb.deleteEvent(eventId);
+
+      // Delete from Firestore
+      var eventDocRef = _firestore
+          .collection('Users')
+          .doc(userId)
+          .collection('events')
+          .doc(eventId.toString());
+      await eventDocRef.delete();
     } catch (e) {
-      print("Error deleting event locally: $e");
+      print("Error deleting event: $e");
     }
   }
+
 
   Future<void> publishEventsToFirebase(String userId, List<Event> events) async {
     try {

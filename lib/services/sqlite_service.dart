@@ -206,7 +206,7 @@ class LocalDatabase {
     return result;  // Return the list of events as a list of maps
   }
 
-  Future<int> updateEvent(Event event) async {
+  Future<bool> updateEvent(Event event) async {
     final db = await MyDataBase;  // Get the database instance
     var result = await db!.update(
       'Events',  // Table to update
@@ -214,8 +214,9 @@ class LocalDatabase {
       where: 'id = ?',  // The condition to match the event by its ID
       whereArgs: [event.id],  // The argument to use for the condition
     );
-    return result;  // Returns the number of rows affected (1 if updated)
+    return result > 0;  // Return true if at least one row was affected, false otherwise
   }
+
 
   Future<int> deleteEvent(int eventId) async {
     final db = await MyDataBase;  // Get the database instance

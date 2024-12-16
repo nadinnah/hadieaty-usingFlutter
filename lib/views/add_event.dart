@@ -67,10 +67,9 @@ class _AddEventPageState extends State<AddEventPage> {
 
       bool success;
 
-      // Always attempt to add or update the event locally and sync with Firebase
       success = widget.event == null
           ? await _controller.addEvent(newEvent)
-          : await _controller.updateEvent(newEvent);
+          : await _controller.updateEvent(newEvent, _userId);
 
       if (success) {
         setState(() {
@@ -129,63 +128,138 @@ class _AddEventPageState extends State<AddEventPage> {
           child: Column(
             children: [
               // Event Name
-              _buildTextField(
-                icon: Icons.event,
-                hintText: "Event Name",
+              TextFormField(
                 initialValue: _name,
+                decoration: InputDecoration(
+                  icon: Icon(Icons.event),
+                  hintText: "Event Name",
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  fillColor: Colors.grey[50],
+                  filled: true,
+                ),
                 onSaved: (value) => _name = value ?? '',
-                validator: (value) =>
-                value!.isEmpty
-                    ? "Please enter the event name"
-                    : null,
+                validator: (value) => value!.isEmpty ? "Please enter the event name" : null,
               ),
               SizedBox(height: 10),
 
               // Event Description
-              _buildTextField(
-                icon: Icons.description,
-                hintText: "Description",
+              TextFormField(
                 initialValue: _description,
+                decoration: InputDecoration(
+                  icon: Icon(Icons.description),
+                  hintText: "Description",
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  fillColor: Colors.grey[50],
+                  filled: true,
+                ),
                 onSaved: (value) => _description = value ?? '',
-                validator: (value) =>
-                value!.isEmpty
-                    ? "Please enter a description"
-                    : null,
+                validator: (value) => value!.isEmpty ? "Please enter a description" : null,
               ),
               SizedBox(height: 10),
 
               // Event Date
-              _buildDateField(),
+              TextFormField(
+                readOnly: true,
+                controller: _dateController,
+                decoration: InputDecoration(
+                  icon: Icon(Icons.calendar_today),
+                  suffixIcon: Icon(Icons.date_range),
+                  hintText: "Select a date",
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  fillColor: Colors.grey[50],
+                  filled: true,
+                ),
+                onTap: () => _selectDate(context),
+                validator: (value) => value!.isEmpty ? "Please select a date" : null,
+              ),
               SizedBox(height: 10),
 
               // Event Location
-              _buildTextField(
-                icon: Icons.location_on,
-                hintText: "Location",
+              TextFormField(
                 initialValue: _location,
+                decoration: InputDecoration(
+                  icon: Icon(Icons.location_on),
+                  hintText: "Location",
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  fillColor: Colors.grey[50],
+                  filled: true,
+                ),
                 onSaved: (value) => _location = value ?? '',
-                validator: (value) =>
-                value!.isEmpty
-                    ? "Please enter a location"
-                    : null,
+                validator: (value) => value!.isEmpty ? "Please enter a location" : null,
               ),
               SizedBox(height: 10),
 
               // Event Category
-              _buildTextField(
-                icon: Icons.category,
-                hintText: "Category",
+              TextFormField(
                 initialValue: _category,
+                decoration: InputDecoration(
+                  icon: Icon(Icons.category),
+                  hintText: "Category",
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  fillColor: Colors.grey[50],
+                  filled: true,
+                ),
                 onSaved: (value) => _category = value ?? '',
-                validator: (value) =>
-                value!.isEmpty
-                    ? "Please enter a category"
-                    : null,
+                validator: (value) => value!.isEmpty ? "Please enter a category" : null,
               ),
               SizedBox(height: 10),
 
               // Event Status (Dropdown)
-              _buildDropdownField(),
+              DropdownButtonFormField<String>(
+                value: _status,
+                items: [
+                  DropdownMenuItem(value: 'Upcoming', child: Text("Upcoming")),
+                  DropdownMenuItem(value: 'Current', child: Text("Current")),
+                  DropdownMenuItem(value: 'Past', child: Text("Past")),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _status = value!;
+                  });
+                },
+                decoration: InputDecoration(
+                  icon: Icon(Icons.timeline),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  fillColor: Colors.grey[50],
+                  filled: true,
+                ),
+              ),
               SizedBox(height: 20),
 
               // Submit Button
@@ -195,93 +269,13 @@ class _AddEventPageState extends State<AddEventPage> {
                   foregroundColor: Colors.white,
                   backgroundColor: Color(0xff273331),
                   padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                  textStyle: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                child: Text(
-                    widget.event == null ? 'Add Event' : 'Update Event'),
+                child: Text(widget.event == null ? 'Add Event' : 'Update Event'),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required IconData icon,
-    required String hintText,
-    required String? initialValue,
-    required void Function(String?) onSaved,
-    required String? Function(String?) validator,
-  }) {
-    return TextFormField(
-      initialValue: initialValue,
-      decoration: InputDecoration(
-        icon: Icon(icon),
-        hintText: hintText,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        fillColor: Colors.grey[50],
-        filled: true,
-      ),
-      onSaved: onSaved,
-      validator: validator,
-    );
-  }
-
-  Widget _buildDateField() {
-    return TextFormField(
-      readOnly: true,
-      controller: _dateController,
-      decoration: InputDecoration(
-        icon: Icon(Icons.calendar_today),
-        suffixIcon: Icon(Icons.date_range),
-        hintText: "Select a date",
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        fillColor: Colors.grey[50],
-        filled: true,
-      ),
-      onTap: () => _selectDate(context),
-      validator: (value) => value!.isEmpty ? "Please select a date" : null,
-    );
-  }
-
-  Widget _buildDropdownField() {
-    return DropdownButtonFormField<String>(
-      value: _status,
-      items: [
-        DropdownMenuItem(value: 'Upcoming', child: Text("Upcoming")),
-        DropdownMenuItem(value: 'Current', child: Text("Current")),
-        DropdownMenuItem(value: 'Past', child: Text("Past")),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _status = value!;
-        });
-      },
-      decoration: InputDecoration(
-        icon: Icon(Icons.timeline),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        fillColor: Colors.grey[50],
-        filled: true,
       ),
     );
   }

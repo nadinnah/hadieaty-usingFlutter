@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';  // Import FirebaseAuth
+import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
 import 'package:flutter/material.dart';
 import 'package:hadieaty/models/event.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
 import 'add_event.dart';
 import 'gift_list_page.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
 
 class UserEventListPage extends StatefulWidget {
   final List<Event> events;
@@ -24,6 +25,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
   late List<Event> _eventsList;
   String _searchQuery = "";
   String _sortOption = 'Name';
+  bool _isLoading = false; // Loading state
 
   @override
   void initState() {
@@ -41,26 +43,60 @@ class _UserEventListPageState extends State<UserEventListPage> {
   }
 
   Future<void> _loadEvents() async {
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
     var events = await _controller.getLocalEvents();
     setState(() {
       _eventsList = events;
+      _isLoading = false; // Hide loading indicator
     });
   }
 
   Future<void> _deleteEvent(String eventId) async {
-    try {
-      await _controller.deleteLocalEvent(int.parse(eventId));
-      await _loadEvents(); // Reload events after deletion
-      widget.onEventsUpdated(_eventsList); // Notify parent widget
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Event deleted successfully"),
-      ));
-    } catch (e) {
-      print("Error deleting event: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Failed to delete event"),
-      ));
+    bool? confirm = await _confirmDeleteEvent(eventId);
+    if (confirm == true) {
+      try {
+        // Get the current authenticated user's ID
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          throw Exception("User not authenticated");
+        }
+
+        await _controller.deleteLocalEvent(int.parse(eventId), user.uid);
+        await _loadEvents(); // Reload events after deletion
+        widget.onEventsUpdated(_eventsList); // Notify parent widget
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Event deleted successfully"),
+        ));
+      } catch (e) {
+        print("Error deleting event: $e");
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Failed to delete event"),
+        ));
+      }
     }
+  }
+
+  Future<bool?> _confirmDeleteEvent(String eventId) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Delete Event"),
+        content: Text("Are you sure you want to delete this event?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text("Delete"),
+          ),
+        ],
+      ),
+    );
   }
 
   void _editEvent(Event event) async {
@@ -104,6 +140,9 @@ class _UserEventListPageState extends State<UserEventListPage> {
   }
 
   Future<void> _publishEventsToFirebase() async {
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
     try {
       // Get the current authenticated user's uid
       User? user = FirebaseAuth.instance.currentUser;
@@ -136,17 +175,37 @@ class _UserEventListPageState extends State<UserEventListPage> {
         content: Text("Events published to Firebase!"),
       ));
 
-      // Notify parent widget to refresh the event list (if needed)
-      widget.onEventsUpdated(_eventsList);
+
 
     } catch (e) {
       print('Error publishing events: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Error publishing events."),
       ));
+    } finally {
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
     }
   }
 
+  String formatDate(String date) {
+    DateTime parsedDate = DateTime.parse(date);
+    return DateFormat('MMMM dd, yyyy').format(parsedDate);
+  }
+
+  Widget _loadingIndicator() {
+    return _isLoading ? CircularProgressIndicator() : Container();
+  }
+
+  Widget _emptyState() {
+    return Center(
+      child: Text(
+        "No events found. Add a new event to get started!",
+        style: TextStyle(fontSize: 18, color: Colors.grey),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,8 +277,13 @@ class _UserEventListPageState extends State<UserEventListPage> {
               ),
             ],
           ),
+          SizedBox(height: 20,),
+          _loadingIndicator(), // Show loading indicator if necessary
+          SizedBox(height: 20,),
           Expanded(
-            child: ListView.builder(
+            child: _eventsList.isEmpty
+                ? _emptyState() // Show empty state if no events
+                : ListView.builder(
               itemCount: _eventsList.length,
               itemBuilder: (context, index) {
                 var event = _eventsList[index];
@@ -233,7 +297,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
                     ),
                     title: Text(event.name),
                     subtitle: Text(
-                      "Category: ${event.category}\nStatus: ${event.status}\nCreated At: ${event.createdAt}",
+                      "Category: ${event.category}\nStatus: ${event.status}\nCreated At: ${formatDate(event.createdAt)}",
                       style: const TextStyle(fontSize: 14),
                     ),
                     trailing: IconButton(
