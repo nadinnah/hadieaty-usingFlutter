@@ -24,7 +24,9 @@ class FriendEventListPage extends StatelessWidget {
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
-      body: ListView.builder(
+      body: events.isEmpty
+          ? Center(child: Text("No events available for $friendName."))
+          : ListView.builder(
         itemCount: events.length,
         itemBuilder: (context, index) {
           var event = events[index];
@@ -35,20 +37,9 @@ class FriendEventListPage extends StatelessWidget {
               title: Text(event.name),
               subtitle: Text(
                 "Category: ${event.category}\nStatus: ${event.status}\nCreated At: ${event.createdAt}",
-                style: const TextStyle(fontSize: 14),
               ),
               onTap: () {
-                // Navigate to FriendGiftListPage with friendId
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FriendGiftListPage(
-                      eventName: event.name,
-                      eventId: event.id!, // Use event ID to fetch related gifts
-                      friendId: friendId, // Pass the friend's ID
-                    ),
-                  ),
-                );
+                // Navigate to gifts list if needed
               },
             ),
           );
@@ -56,4 +47,6 @@ class FriendEventListPage extends StatelessWidget {
       ),
     );
   }
+
 }
+

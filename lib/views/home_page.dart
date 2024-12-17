@@ -33,22 +33,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadUserEvents();
+    //_loadUserEvents();
     //_friendsList = _controller.getFriends();
     _getUserName();
     _loadFriends();
   }
 
-  Future<void> _loadFriends() async {
-    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (userId.isNotEmpty) {
-      var userDoc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
-      if (userDoc.exists) {
-        List<dynamic> friends = userDoc.data()?['friends'] ?? [];
-        await _loadFriendsWithEventCounts(friends);
-      }
-    }
-  }
   // Fetch user name from local database
   void _getUserName() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -62,50 +52,38 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Load events from local database
-  void _loadUserEvents() async {
-    List<Event> events = await _eventController.fetchUserEvents();
-    setState(() {
-      _userEvents = events;
-    });
+  Stream<List<Event>> getUserEventsStream() {
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    return FirebaseFirestore.instance
+        .collection('Events')
+        .where('createdBy', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+      var data = doc.data();
+      return Event.fromMap(data..['id'] = doc.id);
+    }).toList());
   }
 
-  Future<void> _loadFriendsWithEventCounts(List<dynamic> friendIds) async {
-    List<Friend> friendsWithCounts = [];
-
-    for (String friendId in friendIds) {
-      try {
-        // Fetch friend's document
-        var friendDoc = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(friendId)
-            .get();
-
-        if (friendDoc.exists) {
-          var friendData = friendDoc.data();
-          if (friendData != null) {
-            // Fetch upcoming events count
-            int eventCount = await FirestoreService().getUpcomingEventsCount(friendId);
-
-            friendsWithCounts.add(Friend(
-              id: friendId,
-              name: friendData['name'] ?? 'Unknown',
-              profilePicture: friendData['profilePicture'] ?? '',
-              phone: friendData['phone'] ?? 'N/A',
-              upcomingEventsCount: eventCount,
-            ));
-          }
-        }
-      } catch (e) {
-        print("Error fetching friend details for $friendId: $e");
+  Future<void> _loadFriends() async {
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (userId.isNotEmpty) {
+      var userDoc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
+      if (userDoc.exists) {
+        List<dynamic> friendIds = userDoc.data()?['friends'] ?? [];
+        setState(() {
+          _friendsList = friendIds.map((id) => Friend(
+            id: id,
+            name: 'Loading...', // Placeholder for name
+            profilePicture: '',
+            phone: '',
+            upcomingEventsCount: 0, // Event count handled by StreamBuilder
+          )).toList();
+        });
       }
     }
-
-    // Update the UI with loaded friends
-    setState(() {
-      _friendsList = friendsWithCounts;
-      print("Friends loaded: ${_friendsList.length}");
-    });
   }
+
 
 
 
@@ -408,7 +386,7 @@ class _HomePageState extends State<HomePage> {
                 // Fetch friends only once
                 if (!_friendsLoaded && friendIds.isNotEmpty) {
                   _friendsLoaded = true; // Set flag
-                  _loadFriendsWithEventCounts(friendIds);
+                  _loadFriends();
                 }
 
                 return _friendsList.isEmpty
@@ -417,19 +395,117 @@ class _HomePageState extends State<HomePage> {
                   itemCount: _friendsList.length,
                   itemBuilder: (context, index) {
                     var friend = _friendsList[index];
-                    return ListTile(
-                      title: Text(friend.name),
-                      subtitle:
-                      Text("Upcoming Events: ${friend.upcomingEventsCount}"),
-                      leading: CircleAvatar(
-                        backgroundImage: friend.profilePicture.isNotEmpty
-                            ? NetworkImage(friend.profilePicture)
-                            : AssetImage('assets/default_avatar.png')
-                        as ImageProvider,
-                      ),
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance.collection('Users').doc(friend.id).get(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Card(
+                            elevation: 5,
+                            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              contentPadding: EdgeInsets.all(10),
+                              title: Text(
+                                "Loading...",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text("Loading..."),
+                              trailing: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+
+                        if (!snapshot.hasData || !snapshot.data!.exists) {
+                          return ListTile(
+                            title: Text("No friend data available."),
+                          );
+                        }
+
+                        var friendData = snapshot.data!.data() as Map<String, dynamic>;
+
+                        return Card(
+                          elevation: 5,
+                          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.all(10),
+                            leading: CircleAvatar(
+                              radius: 30,
+                              backgroundImage: friendData['profilePicture'] != null &&
+                                  friendData['profilePicture'].isNotEmpty
+                                  ? NetworkImage(friendData['profilePicture'])
+                                  : AssetImage('lib/assets/images/default_profile.png')
+                              as ImageProvider,
+                              backgroundColor: Colors.grey[200],
+                            ),
+                            title: Text(
+                              friendData['name'] ?? "Unknown",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            subtitle: Text(
+                              friendData['phone'] ?? 'N/A',
+                              style: TextStyle(color: Colors.grey[700]),
+                            ),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Upcoming Events",
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                                ),
+                                SizedBox(height: 5),
+                                StreamBuilder<int>(
+                                  stream: FirestoreService().getUpcomingEventsCountStream(friend.id),
+                                  builder: (context, eventSnapshot) {
+                                    if (eventSnapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return Text(
+                                        "Loading...",
+                                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                                      );
+                                    }
+                                    int eventCount = eventSnapshot.data ?? 0;
+                                    return Text(
+                                      "$eventCount",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blueAccent,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                            onTap: () async {
+                              print("Fetching upcoming events for friend ID: ${friend.id}");
+
+                              var events = await FirestoreService()
+                                  .getUpcomingEventsForFriend(friend.id);
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FriendEventListPage(
+                                    events: events,
+                                    friendName: friendData['name'],
+                                    friendId: friend.id,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
                     );
                   },
                 );
+
+
               },
             ),
 

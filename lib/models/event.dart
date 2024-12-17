@@ -1,5 +1,5 @@
 class Event {
-  int? id; // SQLite ID
+  dynamic id; // SQLite ID
   String? firebaseId; // Firestore Document ID
   String name;
   String date;

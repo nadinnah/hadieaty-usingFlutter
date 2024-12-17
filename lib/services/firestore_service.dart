@@ -25,6 +25,35 @@ class FirestoreService {
     }
   }
 
+  Stream<int> getUpcomingEventsCountStream(String friendId) {
+    return _db
+        .collection('Events')
+        .where('createdBy', isEqualTo: friendId) // Filter by friend ID
+        .where('date', isGreaterThan: Timestamp.now()) // Compare Timestamp
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length); // Return document count
+  }
+
+
+  Future<List<Event>> getUpcomingEventsForFriend(String friendId) async {
+    try {
+      var snapshot = await _db
+          .collection('Events')
+          .where('createdBy', isEqualTo: friendId) // Filter by friend ID
+          .where('date', isGreaterThan: Timestamp.now()) // Filter for upcoming events
+          .get();
+
+      return snapshot.docs.map((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        return Event.fromMap(data..['id'] = doc.id); // Convert to Event model
+      }).toList();
+    } catch (e) {
+      print("Error fetching upcoming events for friend: $e");
+      return [];
+    }
+  }
+
+
 
   // Fetch friends list
   Future<List<Map<String, dynamic>>> getFriendsList() async {
@@ -46,7 +75,7 @@ class FirestoreService {
   Future<void> addFriend(String friendId) async {
     try {
       // Fetch the upcoming events count for the friend
-      int eventCount = await getUpcomingEventsCount(friendId);
+      int eventCount = await getEventsCountForUser(friendId);
 
       // Update the current user's friends array
       await _db.collection('Users').doc(userId).update({
@@ -63,17 +92,34 @@ class FirestoreService {
   }
 
 
-  Future<int> getUpcomingEventsCount(String friendId) async {
+  // Future<int> getUpcomingEventsCount(String friendId) async {
+  //   try {
+  //     QuerySnapshot snapshot = await FirebaseFirestore.instance
+  //         .collection('Events') // Global Events collection
+  //         .where('createdBy', isEqualTo: friendId) // Events created by this friend
+  //         .where('date', isGreaterThan: Timestamp.now()) // Upcoming events only
+  //         .get();
+  //
+  //     return snapshot.docs.length;
+  //   } catch (e) {
+  //     print("Error fetching upcoming events count: $e");
+  //     return 0;
+  //   }
+  // }
+
+
+  Future<int> getEventsCountForUser(String friendId) async {
     try {
+      // Query Events collection to count events created by this friend
       QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('Events') // Global Events collection
-          .where('createdBy', isEqualTo: friendId) // Events created by this friend
-          .where('date', isGreaterThan: Timestamp.now()) // Upcoming events only
+          .collection('Events')
+          .where('createdBy', isEqualTo: friendId)
           .get();
 
+      print("Friend $friendId has ${snapshot.docs.length} events.");
       return snapshot.docs.length;
     } catch (e) {
-      print("Error fetching upcoming events count: $e");
+      print("Error fetching event count for friend $friendId: $e");
       return 0;
     }
   }
@@ -84,16 +130,17 @@ class FirestoreService {
       await _db.collection('Events').add({
         'name': event.name,
         'category': event.category,
-        'date': Timestamp.fromDate(DateTime.parse(event.date)),
+        'date': Timestamp.fromDate(DateTime.parse(event.date)), // Store date as Timestamp
         'description': event.description,
         'location': event.location,
-        'createdBy': FirebaseAuth.instance.currentUser!.uid, // Reference User ID
+        'createdBy': FirebaseAuth.instance.currentUser!.uid, // User ID of event creator
       });
       print("Event added successfully to Firestore.");
     } catch (e) {
       print("Error adding event to Firestore: $e");
     }
   }
+
 
 
   Future<void> addGiftToEvent(String eventId, Gift gift) async {
@@ -131,4 +178,24 @@ class FirestoreService {
       'pledgedBy': userId, // Store the user ID of the person pledging
     });
   }
+
+  Future<List<Event>> getEventsForFriend(String friendId) async {
+    try {
+      var snapshot = await FirebaseFirestore.instance
+          .collection('Events') // Check this path
+          .where('createdBy', isEqualTo: friendId) // Filter by friend's ID
+          .get();
+
+      // Map Firestore documents to Event objects
+      return snapshot.docs.map((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        return Event.fromMap(data..['id'] = doc.id); // Ensure Firestore ID is assigned
+      }).toList();
+    } catch (e) {
+      print("Error fetching events for friend: $e");
+      return [];
+    }
+  }
+
+
 }

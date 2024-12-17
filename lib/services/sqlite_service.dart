@@ -94,12 +94,7 @@ class LocalDatabase {
   }
 
 
-  // Read data from the database
-  readData(String SQL) async {
-    Database? mydata = await MyDataBase;
-    var response = await mydata!.rawQuery(SQL);
-    return response;
-  }
+
 
   Future<List<Map<String, dynamic>>> getEventsByUserId(String userId) async {
     final db = await MyDataBase;
@@ -118,29 +113,6 @@ class LocalDatabase {
     return await db!.insert('Users', userData);
   }
 
-  Future<bool> addEventForLoggedInUser(Event event) async {
-    try {
-      // Fetch the logged-in user's Firestore UID
-      String? userId = FirebaseAuth.instance.currentUser?.uid;
-
-      if (userId == null || userId.isEmpty) {
-        throw Exception("User is not logged in or UID is unavailable.");
-      }
-
-      // Convert the Event object to a map for insertion, adding `userId` to the data
-      Map<String, dynamic> eventData = event.toMap();
-      eventData['userId'] = userId; // Add userId to the event data for database storage
-
-      // Insert the event into the local SQLite database
-      await insertEventWithUserId(eventData); // This method handles the actual insertion
-      print("Event '${event.name}' added locally for user: $userId");
-
-      return true; // Successfully added event
-    } catch (e) {
-      print("Error adding event for logged-in user: $e");
-      return false; // Indicate failure to add event
-    }
-  }
 
 
   Future<int> insertEventWithUserId(Map<String, dynamic> eventData) async {
@@ -164,18 +136,6 @@ class LocalDatabase {
     );
   } //WORKS
 
-  String getCurrentUserId() {
-    return FirebaseAuth.instance.currentUser?.uid ?? '';
-  }
-
-  Future<List<Map<String, dynamic>>> getUnsyncedEvents(String userId) async {
-    final db = await MyDataBase;
-    return await db!.query(
-      'Events',
-      where: 'syncStatus = ? AND userId = ?',
-      whereArgs: ['unsynced', userId],
-    );
-  }
 
   Future<String?> getUserNameByEmail(String email) async {
     final db = await MyDataBase;
@@ -190,41 +150,10 @@ class LocalDatabase {
       return result.first['name'] as String; // Return the name
     }
     return null; // Return null if no user is found
-  }
+  }//USED
 
-  // Insert data into the database
-  insertData(String SQL) async {
-    Database? mydata = await MyDataBase;
-    int response = await mydata!.rawInsert(SQL);
-    return response;
-  } //WORKS
 
-  // Delete data from the database
-  deleteData(String SQL) async {
-    Database? mydata = await MyDataBase;
-    int response = await mydata!.rawDelete(SQL);
-    return response;
-  }
 
-  // Update data in the database
-  updateData(String SQL) async {
-    Database? mydata = await MyDataBase;
-    int response = await mydata!.rawUpdate(SQL);
-    return response;
-  }
-
-  // Fetch events and their associated gifts for the user
-  Future<List<Map<String, dynamic>>> getEventsAndGiftsByUserId(
-      int userId) async {
-    Database? mydata = await MyDataBase;
-    String sql = '''
-      SELECT E.*, G.* FROM Events E
-      LEFT JOIN Gifts G ON E.id = G.eventId
-      WHERE E.userId = $userId
-    ''';
-    var result = await mydata!.rawQuery(sql);
-    return result;
-  }
 
 //EVENTS:
   Future<int> insertEvent(Event event) async {
@@ -235,7 +164,7 @@ class LocalDatabase {
       conflictAlgorithm: ConflictAlgorithm.replace,  // Replace if already exists
     );
     return result;  // Return the ID of the inserted event
-  }
+  }//USED
 
   Future<int> updateEvent(Event event) async {
     final db = await MyDataBase;
@@ -248,7 +177,7 @@ class LocalDatabase {
       where: 'id = ?',
       whereArgs: [event.id],
     );
-  }
+  }//USED
 
 
 
@@ -259,28 +188,21 @@ class LocalDatabase {
       where: 'id = ?',
       whereArgs: [eventId],
     );
-  }
+  }//USED
 
 
   // Fetch all gifts for a specific event
   Future<List<Map<String, dynamic>>> getGiftsByEventId(int eventId) async {
     final db = await MyDataBase;
     return await db!.query('Gifts', where: 'eventId = ?', whereArgs: [eventId]);
-  }
+  }//USED
 
-// Search gifts by name for a specific event
-  Future<List<Map<String, dynamic>>> searchGifts(
-      int eventId, String query) async {
-    final db = await MyDataBase;
-    String sql = 'SELECT * FROM Gifts WHERE eventId = ? AND name LIKE ?';
-    return await db!.rawQuery(sql, [eventId, '%$query%']);
-  }
 
 // Insert a new gift
   Future<int> insertGift(Gift gift) async {
     final db = await MyDataBase;
     return await db!.insert('Gifts', gift.toMap());
-  }
+  }//USED
 
   Future<int> updateTheGift(int giftId, Gift gift) async {
     final db =
@@ -291,7 +213,7 @@ class LocalDatabase {
       where: 'id = ?', // Condition to find the correct gift by id
       whereArgs: [giftId], // Arguments to substitute for the '?' placeholder
     );
-  }
+  }//USED
 
 // Delete a gift by ID
   Future<int> deleteGift(int giftId) async {
@@ -301,32 +223,7 @@ class LocalDatabase {
       where: 'id = ?', // Condition to match the gift by its ID
       whereArgs: [giftId], // The ID of the gift to delete
     );
-  }
-
-// Update the status of a gift (pledged or available)
-  Future<int> updateGiftStatus(int giftId, String newStatus) async {
-    final db = await MyDataBase;
-    return await db!.update(
-      'Gifts',
-      {'status': newStatus},
-      where: 'id = ?',
-      whereArgs: [giftId],
-    );
-  }
-
-// Fetch a gift by ID
-  Future<Map<String, dynamic>?> getGiftById(int giftId) async {
-    final db = await MyDataBase;
-    var result = await db!.query(
-      'Gifts',
-      where: 'id = ?',
-      whereArgs: [giftId],
-    );
-    if (result.isNotEmpty) {
-      return result.first;
-    }
-    return null;
-  }
+  }//USED
 
 // Fetch pledged gifts for a specific user (based on userId)
   Future<List<Map<String, dynamic>>> getPledgedGiftsByUserId(int userId) async {
@@ -335,7 +232,7 @@ class LocalDatabase {
         where:
             'status = ? AND eventId IN (SELECT id FROM Events WHERE userId = ?)',
         whereArgs: ['pledged', userId]);
-  }
+  }//USED
 
 //USER
 
@@ -361,19 +258,7 @@ class LocalDatabase {
     );
   }
 
-  Future<int> deleteEventWithGifts(int eventId) async {
-    final db = await MyDataBase;
-    await db!.delete(
-      'Gifts', // Delete gifts associated with the event first
-      where: 'eventId = ?',
-      whereArgs: [eventId],
-    );
-    return await db!.delete(
-      'Events', // Now delete the event itself
-      where: 'id = ?',
-      whereArgs: [eventId],
-    );
-  }
+
 
   Future<void> updateUserNotifications(int userId, bool value) async {
     try {

@@ -52,32 +52,13 @@ class EventController {
 
   Future<void> publishEvent(Event event) async {
     try {
-      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-      if (userId.isEmpty) return;
+      // Call FirestoreService to publish the event
+      await FirestoreService().addEvent(event);
 
-      // Firestore - Add the event
-      var eventRef = await FirebaseFirestore.instance.collection('Events').add({
-        'name': event.name,
-        'category': event.category,
-        'date': Timestamp.fromDate(DateTime.parse(event.date)),
-        'description': event.description,
-        'location': event.location,
-        'createdBy': userId, // Set the user ID
-      });
-
-      // Update sync status and Firestore ID
+      // After publishing, mark as synced locally
       event.syncStatus = true;
-      event.firebaseId = eventRef.id;
-
-      // Update the local SQLite database
-      int rowsUpdated = await localdb.updateEvent(event); // Rows affected count
-      bool updatedLocally = rowsUpdated > 0; // Check for successful update
-
-      if (updatedLocally) {
-        print("Event updated locally after publishing.");
-      } else {
-        print("Failed to update event locally.");
-      }
+      await localdb.updateEvent(event);
+      print("Event published to Firestore and marked as synced locally.");
     } catch (e) {
       print("Error publishing event: $e");
     }
@@ -88,10 +69,11 @@ class EventController {
 
 
 
+
   Future<void> deleteEvent(Event event) async {
     try {
       // Delete locally
-      await localdb.deleteEvent(event.id!);
+      await localdb.deleteEvent(event.id! as int);
 
       // Delete from Firestore
       if (event.firebaseId != null) {
