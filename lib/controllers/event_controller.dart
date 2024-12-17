@@ -1,121 +1,158 @@
 import '../models/event.dart';
+import '../services/firestore_service.dart';
 import '../services/sqlite_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class EventController {
   final LocalDatabase localdb = LocalDatabase();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Add an event to the local database (no immediate sync to Firestore)
-  Future<bool> addEvent(Event event) async {
+
+  Future<bool> addEventLocally(Event event) async {
     try {
-      event.syncStatus = false; // Mark as unsynced
-      await localdb.insertEvent(event);
-      return true;
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+
+      event.createdBy = user.uid; // Assign user ID
+      event.syncStatus = false;
+
+      int result = await localdb.insertEvent(event); // Insert locally
+      print("Event added with ID: $result");
+
+      return result > 0; // Ensure success
     } catch (e) {
       print("Error adding event locally: $e");
       return false;
     }
   }
 
-  // Fetch all events from the local database
-  Future<List<Event>> getLocalEvents() async {
+
+  Future<bool> updateEvent(Event event) async {
     try {
-      var eventData = await localdb.getEvents();
-      return eventData.map((event) => Event.fromMap(event)).toList();
-    } catch (e) {
-      print("Error fetching local events: $e");
-      return [];
-    }
-  }
-
-  Future<bool> updateEvent(Event event, String userId) async {
-    bool success = false;
-    try {
-      // Update Firebase
-      var eventDocRef = _firestore
-          .collection('Users')
-          .doc(userId)
-          .collection('events')
-          .doc(event.id.toString());
-
-      await eventDocRef.update(event.toMap());
-
       // Update locally in SQLite
-      success = await localdb.updateEvent(event);
+      int rowsUpdated = await localdb.updateEvent(event); // Returns rows affected
+      bool updatedLocally = rowsUpdated > 0; // Check if the update succeeded
+      if (!updatedLocally) {
+        print("Failed to update event locally.");
+        return false;
+      }
+
+      // Sync with Firestore only if local update succeeded
+      await publishEvent(event);
+      print("Event updated locally and synced to Firestore.");
+
+      return true;
     } catch (e) {
-      print('Error updating event: $e');
+      print("Error updating event: $e");
+      return false;
     }
-    return success;
   }
 
-  // Delete an event from the local database
-  Future<void> deleteLocalEvent(int eventId, String userId) async {
+
+  Future<void> publishEvent(Event event) async {
     try {
-      // Delete from SQLite
-      await localdb.deleteEvent(eventId);
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (userId.isEmpty) return;
+
+      // Firestore - Add the event
+      var eventRef = await FirebaseFirestore.instance.collection('Events').add({
+        'name': event.name,
+        'category': event.category,
+        'date': Timestamp.fromDate(DateTime.parse(event.date)),
+        'description': event.description,
+        'location': event.location,
+        'createdBy': userId, // Set the user ID
+      });
+
+      // Update sync status and Firestore ID
+      event.syncStatus = true;
+      event.firebaseId = eventRef.id;
+
+      // Update the local SQLite database
+      int rowsUpdated = await localdb.updateEvent(event); // Rows affected count
+      bool updatedLocally = rowsUpdated > 0; // Check for successful update
+
+      if (updatedLocally) {
+        print("Event updated locally after publishing.");
+      } else {
+        print("Failed to update event locally.");
+      }
+    } catch (e) {
+      print("Error publishing event: $e");
+    }
+  }
+
+
+
+
+
+
+  Future<void> deleteEvent(Event event) async {
+    try {
+      // Delete locally
+      await localdb.deleteEvent(event.id!);
 
       // Delete from Firestore
-      var eventDocRef = _firestore
-          .collection('Users')
-          .doc(userId)
-          .collection('events')
-          .doc(eventId.toString());
-      await eventDocRef.delete();
+      if (event.firebaseId != null) {
+        await _firestore
+            .collection('Users')
+            .doc(FirebaseAuth.instance.currentUser?.uid)
+            .collection('events')
+            .doc(event.firebaseId)
+            .delete();
+      }
     } catch (e) {
       print("Error deleting event: $e");
     }
   }
 
-
-  Future<void> publishEventsToFirebase(String userId, List<Event> events) async {
+  // Fetch all events for the logged-in user
+  Future<List<Event>> getEventsForCurrentUser() async {
     try {
-      if (userId.isEmpty) {
-        print("User ID is empty, unable to publish events.");
-        return; // Prevent publishing if userId is invalid
-      }
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (userId.isEmpty) return [];
 
-      for (var event in events) {
-        if (event.id == null || event.id == 0) {
-          // Add new event to Firebase and let Firestore generate the ID
-          var userDocRef = _firestore.collection('Users').doc(userId);
-          var docRef = await userDocRef.collection('events').add({
-            'name': event.name,
-            'date': event.date,
-            'location': event.location,
-            'description': event.description,
-            'createdBy': userId,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-          // Use the Firestore auto-generated ID
-          event.id = docRef.id as int?; // Store the Firebase document ID as a string
-
-          // Update SQLite with Firebase ID
-          await localdb.updateEvent(event); // Ensure this updates SQLite correctly
-        } else {
-          // Check if the event document exists
-          var eventDocRef = _firestore.collection('Users').doc(userId).collection('events').doc(event.id.toString());
-          var docSnapshot = await eventDocRef.get();
-
-          if (!docSnapshot.exists) {
-            // If event doesn't exist, handle it accordingly (e.g., create it)
-            print("Event does not exist, creating new event document.");
-            await eventDocRef.set(event.toMap()); // Create new event document if it doesn't exist
-          } else {
-            // Update existing event
-            await eventDocRef.update(event.toMap());
-          }
-
-          event.syncStatus = true;
-          await localdb.updateEvent(event);
-        }
-      }
+      // Fetch events from local database
+      var localEvents = await localdb.getEventsByUserId(userId);
+      return localEvents.map((e) => Event.fromMap(e)).toList();
     } catch (e) {
-      print('Error publishing events: $e');
+      print("Error fetching events: $e");
+      return [];
     }
   }
+  Future<List<Event>> fetchUserEvents() async {
+    String userId = FirebaseAuth.instance.currentUser!.uid;
+    return await FirestoreService().getUserEvents(userId);
+  }
 
+
+  Future<void> syncEventToFirebase(Event event) async {
+    try {
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (userId.isEmpty) return; // Exit if user is not authenticated
+
+      // Step 2: Sync to Firebase
+      var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
+      var eventsCollection = userDocRef.collection('events');
+
+      if (event.firebaseId == null) {
+        // New event, add it to Firebase
+        var docRef = await eventsCollection.add(event.toMap());
+        event.firebaseId = docRef.id; // Assign the Firestore ID (firebaseId)
+      } else {
+        // Existing event, update it in Firebase
+        await eventsCollection.doc(event.firebaseId).update(event.toMap());
+      }
+
+      // Step 3: After syncing to Firebase, update local SQLite with firebaseId
+      await localdb.updateEvent(event); // Update the SQLite event with firebaseId
+
+      print("Event successfully synced to Firebase.");
+    } catch (e) {
+      print("Error syncing event to Firebase: $e");
+    }
+  }
 
 
 }

@@ -22,8 +22,8 @@ class _AddEventPageState extends State<AddEventPage> {
   String _location = '';
   String _category = '';
   String _status = 'Upcoming';
-  late String _createdAt;
-  late String _userId;
+  String _createdAt = DateTime.now().toIso8601String();
+  late String _createdBy; // Field for the user who created the event
   bool _syncStatus = false;
 
   final TextEditingController _dateController = TextEditingController();
@@ -31,20 +31,22 @@ class _AddEventPageState extends State<AddEventPage> {
   @override
   void initState() {
     super.initState();
-    _userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    _createdAt = DateTime.now().toIso8601String();
 
-    // Populate fields for editing
+    // Populate `createdBy` with current user's email
+    _createdBy = FirebaseAuth.instance.currentUser?.email ?? 'Unknown';
+
+    // Populate fields for editing if event is provided
     if (widget.event != null) {
       final event = widget.event!;
       _name = event.name;
       _description = event.description;
       _dateController.text = event.date;
       _location = event.location;
-      _category = event.category;
-      _status = event.status;
+      _category = event.category!;
+      _status = event.status!;
       _createdAt = event.createdAt;
       _syncStatus = event.syncStatus;
+      _createdBy = event.createdBy; // Use existing createdBy value if editing
     }
   }
 
@@ -53,7 +55,6 @@ class _AddEventPageState extends State<AddEventPage> {
       _formKey.currentState?.save();
 
       Event newEvent = Event(
-        id: widget.event?.id,
         name: _name,
         description: _description,
         date: _dateController.text,
@@ -61,36 +62,34 @@ class _AddEventPageState extends State<AddEventPage> {
         category: _category,
         status: _status,
         createdAt: _createdAt,
-        userId: _userId,
+        createdBy: FirebaseAuth.instance.currentUser?.uid ?? '', // Set createdBy
         syncStatus: _syncStatus,
       );
 
       bool success;
 
-      success = widget.event == null
-          ? await _controller.addEvent(newEvent)
-          : await _controller.updateEvent(newEvent, _userId);
-
-      if (success) {
-        setState(() {
-          _syncStatus = true;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Event ${widget.event == null ? 'added' : 'updated'} successfully")),
-        );
+      if (widget.event == null) {
+        // Add new event
+        success = await _controller.addEventLocally(newEvent);
       } else {
-        setState(() {
-          _syncStatus = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to save event.")),
-        );
+        // Update existing event
+        success = await _controller.updateEvent(newEvent);
       }
 
       if (success) {
-        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Event ${widget.event == null ? 'added' : 'updated'} successfully"),
+          ),
+        );
+        Navigator.pop(context, true); // Return a success flag
+
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to save event."),
+          ),
+        );
       }
     }
   }

@@ -1,25 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/event.dart'; // Ensure this imports your Event model
+import '../models/event.dart';
+import '../models/gift.dart'; // Ensure this imports your Event model
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   // Fetch the user's upcoming events
-  Future<List<Event>> getUserUpcomingEvents() async {
-    CollectionReference eventsRef = _db.collection('Users').doc(userId).collection('events');
-    DateTime currentDate = DateTime.now();
-    Timestamp currentTimestamp = Timestamp.fromDate(currentDate);
+  Future<List<Event>> getUserEvents(String userId) async {
+    try {
+      var snapshot = await _db
+          .collection('Events')
+          .where('createdBy', isEqualTo: userId)
+          .get();
 
-    // Fetch events where the date is after the current date
-    QuerySnapshot snapshot = await eventsRef.where('date', isGreaterThan: currentTimestamp).get();
-
-    // Convert Firestore documents to Event objects
-    return snapshot.docs
-        .map((doc) => Event.fromMap(doc.data() as Map<String, dynamic>))
-        .toList();
+      return snapshot.docs.map((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        return Event.fromMap(data..['id'] = doc.id);
+      }).toList();
+    } catch (e) {
+      print("Error fetching events: $e");
+      return [];
+    }
   }
+
 
   // Fetch friends list
   Future<List<Map<String, dynamic>>> getFriendsList() async {
@@ -38,34 +43,78 @@ class FirestoreService {
     return friendsData;
   }
 
-  // Fetch the number of upcoming events for a friend
+  Future<void> addFriend(String friendId) async {
+    try {
+      // Fetch the upcoming events count for the friend
+      int eventCount = await getUpcomingEventsCount(friendId);
+
+      // Update the current user's friends array
+      await _db.collection('Users').doc(userId).update({
+        'friends': FieldValue.arrayUnion([friendId]),
+      });
+
+      // Optionally, store the event count as part of the friend's data
+      await _db.collection('Users').doc(userId).collection('friends').doc(friendId).set({
+        'eventCount': eventCount,
+      });
+    } catch (e) {
+      print("Error adding friend: $e");
+    }
+  }
+
+
   Future<int> getUpcomingEventsCount(String friendId) async {
-    CollectionReference eventsRef = _db.collection('Users').doc(friendId).collection('events');
-    DateTime currentDate = DateTime.now();
-    Timestamp currentTimestamp = Timestamp.fromDate(currentDate);
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('Events') // Global Events collection
+          .where('createdBy', isEqualTo: friendId) // Events created by this friend
+          .where('date', isGreaterThan: Timestamp.now()) // Upcoming events only
+          .get();
 
-    QuerySnapshot snapshot = await eventsRef.where('date', isGreaterThan: currentTimestamp).get();
-    return snapshot.docs.length;
+      return snapshot.docs.length;
+    } catch (e) {
+      print("Error fetching upcoming events count: $e");
+      return 0;
+    }
   }
 
-  // Add a new event for the user
+
   Future<void> addEvent(Event event) async {
-    CollectionReference eventsRef = _db.collection('Users').doc(userId).collection('events');
-
-    // Convert the Event object to a map and add it to Firestore
-    await eventsRef.add(event.toMap());
+    try {
+      await _db.collection('Events').add({
+        'name': event.name,
+        'category': event.category,
+        'date': Timestamp.fromDate(DateTime.parse(event.date)),
+        'description': event.description,
+        'location': event.location,
+        'createdBy': FirebaseAuth.instance.currentUser!.uid, // Reference User ID
+      });
+      print("Event added successfully to Firestore.");
+    } catch (e) {
+      print("Error adding event to Firestore: $e");
+    }
   }
 
-  // Add a new gift to an event
-  Future<void> addGiftToEvent(String eventId, String giftName, double giftPrice) async {
-    CollectionReference giftsRef = _db.collection('Users').doc(userId).collection('events').doc(eventId).collection('gifts');
-    await giftsRef.add({
-      'name': giftName,
-      'price': giftPrice,
-      'status': 'available', // Initially available
-      'pledgedBy': '', // No one pledged it yet
-    });
+
+  Future<void> addGiftToEvent(String eventId, Gift gift) async {
+    try {
+      await _db
+          .collection('Events')
+          .doc(eventId)
+          .collection('Gifts')
+          .add({
+        'name': gift.name,
+        'description': gift.description ?? '',
+        'price': gift.price ?? 0.0,
+        'category': gift.category ?? '',
+        'imageUrl': gift.imageUrl ?? '',
+      });
+      print("Gift added successfully to Firestore.");
+    } catch (e) {
+      print("Error adding gift to Firestore: $e");
+    }
   }
+
 
   // Get gifts for a specific event
   Future<List<Map<String, dynamic>>> getGiftsForEvent(String eventId) async {

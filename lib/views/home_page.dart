@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
 import 'package:hadieaty/controllers/friend_controller.dart';
 import 'package:hadieaty/models/event.dart';
+import '../services/firestore_service.dart';
 import '../services/shared_preference.dart';
 import '../services/sqlite_service.dart';
 import 'add_event.dart';
@@ -27,6 +28,7 @@ class _HomePageState extends State<HomePage> {
   List<Event> _userEvents = [];
   String _userName = '';
   String _userEmail = '';
+  bool _friendsLoaded = false;
 
   @override
   void initState() {
@@ -34,8 +36,19 @@ class _HomePageState extends State<HomePage> {
     _loadUserEvents();
     //_friendsList = _controller.getFriends();
     _getUserName();
+    _loadFriends();
   }
 
+  Future<void> _loadFriends() async {
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (userId.isNotEmpty) {
+      var userDoc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
+      if (userDoc.exists) {
+        List<dynamic> friends = userDoc.data()?['friends'] ?? [];
+        await _loadFriendsWithEventCounts(friends);
+      }
+    }
+  }
   // Fetch user name from local database
   void _getUserName() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -50,11 +63,53 @@ class _HomePageState extends State<HomePage> {
 
   // Load events from local database
   void _loadUserEvents() async {
-    List<Event> events = await _eventController.getLocalEvents();
+    List<Event> events = await _eventController.fetchUserEvents();
     setState(() {
       _userEvents = events;
     });
   }
+
+  Future<void> _loadFriendsWithEventCounts(List<dynamic> friendIds) async {
+    List<Friend> friendsWithCounts = [];
+
+    for (String friendId in friendIds) {
+      try {
+        // Fetch friend's document
+        var friendDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(friendId)
+            .get();
+
+        if (friendDoc.exists) {
+          var friendData = friendDoc.data();
+          if (friendData != null) {
+            // Fetch upcoming events count
+            int eventCount = await FirestoreService().getUpcomingEventsCount(friendId);
+
+            friendsWithCounts.add(Friend(
+              id: friendId,
+              name: friendData['name'] ?? 'Unknown',
+              profilePicture: friendData['profilePicture'] ?? '',
+              phone: friendData['phone'] ?? 'N/A',
+              upcomingEventsCount: eventCount,
+            ));
+          }
+        }
+      } catch (e) {
+        print("Error fetching friend details for $friendId: $e");
+      }
+    }
+
+    // Update the UI with loaded friends
+    setState(() {
+      _friendsList = friendsWithCounts;
+      print("Friends loaded: ${_friendsList.length}");
+    });
+  }
+
+
+
+
 
   void _addFriend() async {
     TextEditingController emailController = TextEditingController();
@@ -62,78 +117,69 @@ class _HomePageState extends State<HomePage> {
 
     showDialog(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: Text("Add Friend by Email"),
-            content: TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: 'Friend\'s Email'),
-              keyboardType: TextInputType.emailAddress,
-              onChanged: (value) {
-                friendEmail = value;
-              },
-            ),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  if (friendEmail.isNotEmpty) {
-                    // Try to find the user by email in Firestore
-                    var friendDoc = await FirebaseFirestore.instance
+      builder: (context) => AlertDialog(
+        title: Text("Add Friend by Email"),
+        content: TextField(
+          controller: emailController,
+          decoration: InputDecoration(labelText: 'Friend\'s Email'),
+          keyboardType: TextInputType.emailAddress,
+          onChanged: (value) => friendEmail = value,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              if (friendEmail.isNotEmpty) {
+                try {
+                  // Query Firestore to find the friend by email
+                  var friendDoc = await FirebaseFirestore.instance
+                      .collection('Users')
+                      .where('email', isEqualTo: friendEmail)
+                      .get();
+
+                  if (friendDoc.docs.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("No user found with that email")),
+                    );
+                  } else {
+                    var friendData = friendDoc.docs.first.data();
+                    String friendId = friendData['uid'];
+
+                    // Add friend's UID to the current user's `friends` array
+                    String userId = FirebaseAuth.instance.currentUser!.uid;
+                    await FirebaseFirestore.instance
                         .collection('Users')
-                        .where('email', isEqualTo: friendEmail)
-                        .get();
+                        .doc(userId)
+                        .update({
+                      'friends': FieldValue.arrayUnion([friendId]),
+                    });
 
-                    if (friendDoc.docs.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text("No user found with that email")));
-                    } else {
-                      var friendData = friendDoc.docs.first.data();
-                      Friend friend = Friend(
-                        name: friendData['name'],
-                        profilePicture: friendData['profilePicture'] ?? '',
-                        phone: friendData['phone'] ?? '',
-                        upcomingEventsCount: friendData['upcomingEventsCount'] ??
-                            0,
-                        id: friendData['uid'],
-                      );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("${friendData['name']} added as a friend.")),
+                    );
 
-                      // Add the friend to your user's friends list in Firestore or SQLite
-                      String userId = FirebaseAuth.instance.currentUser?.uid ??
-                          '';
-                      await FirebaseFirestore.instance
-                          .collection('Users')
-                          .doc(userId)
-                          .collection('friends')
-                          .doc(
-                          friendEmail) // Using email as a unique identifier for simplicity
-                          .set({
-                        'name': friend.name,
-                        'profilePicture': friend.profilePicture,
-                        'phone': friend.phone,
-                        'upcomingEventsCount': friend.upcomingEventsCount,
-                      });
-
-                      // Add friend to local list and refresh UI
-                      setState(() {
-                        _friendsList.add(friend);
-                      });
-                      Navigator.pop(context); // Close the dialog
-                    }
+                    // Reload the friends list
+                    _loadFriends();
+                    Navigator.pop(context); // Close the dialog
                   }
-                },
-                child: Text("Add Friend"),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close dialog without action
-                },
-                child: Text("Cancel"),
-              ),
-            ],
+                } catch (e) {
+                  print("Error adding friend: $e");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Failed to add friend.")),
+                  );
+                }
+              }
+            },
+            child: Text("Add Friend"),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel"),
+          ),
+        ],
+      ),
     );
   }
+
 
   // Search functionality for friends
   // void _searchFriends(String query) {
@@ -350,44 +396,44 @@ class _HomePageState extends State<HomePage> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return CircularProgressIndicator();
+                  return Center(child: CircularProgressIndicator());
                 }
                 if (!snapshot.hasData || !snapshot.data!.exists) {
-                  return Text("No friends available");
+                  return Center(child: Text("No friends available"));
                 }
-                var data = snapshot.data!.data() as Map<String, dynamic>;
-                List<dynamic> friends = data['friends'] ?? [];
 
-                // Fetch friend details here using the friend UIDs
-                return FutureBuilder<List<Friend>>(
-                  future: friendController.getFriendsDetails(friends), // Fetch friend details
-                  builder: (context, friendSnapshot) {
-                    if (friendSnapshot.connectionState == ConnectionState.waiting) {
-                      return CircularProgressIndicator();
-                    }
-                    if (!friendSnapshot.hasData || friendSnapshot.data!.isEmpty) {
-                      return Column(children: [
-                        SizedBox(height: 150,),Text("No friends found")
-                      ],);
-                    }
-                    List<Friend> friendsList = friendSnapshot.data!;
-                    return ListView.builder(
-                      itemCount: friendsList.length,
-                      itemBuilder: (context, index) {
-                        var friend = friendsList[index];
-                        return ListTile(
-                          title: Text(friend.name),
-                          subtitle: Text("Phone: ${friend.phone}"),
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(friend.profilePicture),
-                          ),
-                        );
-                      },
+                var data = snapshot.data!.data() as Map<String, dynamic>;
+                List<dynamic> friendIds = data['friends'] ?? [];
+
+                // Fetch friends only once
+                if (!_friendsLoaded && friendIds.isNotEmpty) {
+                  _friendsLoaded = true; // Set flag
+                  _loadFriendsWithEventCounts(friendIds);
+                }
+
+                return _friendsList.isEmpty
+                    ? Center(child: Text("No friends found."))
+                    : ListView.builder(
+                  itemCount: _friendsList.length,
+                  itemBuilder: (context, index) {
+                    var friend = _friendsList[index];
+                    return ListTile(
+                      title: Text(friend.name),
+                      subtitle:
+                      Text("Upcoming Events: ${friend.upcomingEventsCount}"),
+                      leading: CircleAvatar(
+                        backgroundImage: friend.profilePicture.isNotEmpty
+                            ? NetworkImage(friend.profilePicture)
+                            : AssetImage('assets/default_avatar.png')
+                        as ImageProvider,
+                      ),
                     );
                   },
                 );
               },
             ),
+
+
           )
 
         ],

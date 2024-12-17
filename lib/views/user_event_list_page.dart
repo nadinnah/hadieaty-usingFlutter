@@ -32,73 +32,59 @@ class _UserEventListPageState extends State<UserEventListPage> {
   void initState() {
     super.initState();
     _eventsList = widget.events;
+    _loadEvents();
   }
 
   Future<void> _addEvent() async {
-    await Navigator.push(
+    bool? result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => AddEventPage()),
     );
-    await _loadEvents();
-    widget.onEventsUpdated(_eventsList); // Notify parent widget of updates
-  }
 
-  Future<void> _loadEvents() async {
-    setState(() {
-      _isLoading = true; // Show loading indicator
-    });
-    var events = await _controller.getLocalEvents();
-    setState(() {
-      _eventsList = events;
-      _isLoading = false; // Hide loading indicator
-    });
-  }
-
-  Future<void> _deleteEvent(String eventId) async {
-    bool? confirm = await _confirmDeleteEvent(eventId);
-    if (confirm == true) {
-      try {
-        // Get the current authenticated user's ID
-        User? user = FirebaseAuth.instance.currentUser;
-        if (user == null) {
-          throw Exception("User not authenticated");
-        }
-
-        await _controller.deleteLocalEvent(int.parse(eventId), user.uid);
-        await _loadEvents(); // Reload events after deletion
-        widget.onEventsUpdated(_eventsList); // Notify parent widget
-
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Event deleted successfully"),
-        ));
-      } catch (e) {
-        print("Error deleting event: $e");
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("Failed to delete event"),
-        ));
-      }
+    if (result == true) { // Reload events after returning
+      await _loadEvents();
     }
   }
 
-  Future<bool?> _confirmDeleteEvent(String eventId) async {
+  Future<void> _loadEvents() async {
+    setState(() => _isLoading = true);
+
+    var events = await _controller.getEventsForCurrentUser();
+    print("Events Loaded: ${events.length}");
+    for (var event in events) {
+      print(event.name); // Log each event
+    }
+
+    setState(() {
+      _eventsList = events;
+      _isLoading = false;
+    });
+  }
+
+
+  Future<bool?> _confirmDeleteEvent(String eventName) async {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text("Delete Event"),
-        content: Text("Are you sure you want to delete this event?"),
+        content: Text("Are you sure you want to delete the event \"$eventName\"?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(context).pop(false), // Cancel
             child: Text("Cancel"),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text("Delete"),
+            onPressed: () => Navigator.of(context).pop(true), // Confirm
+            child: Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
     );
   }
+
 
   void _editEvent(Event event) async {
     await Navigator.push(
@@ -140,55 +126,6 @@ class _UserEventListPageState extends State<UserEventListPage> {
     }
   }
 
-  Future<void> _publishEventsToFirebase() async {
-    setState(() {
-      _isLoading = true; // Show loading indicator
-    });
-    try {
-      // Get the current authenticated user's uid
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text("User is not authenticated."),
-        ));
-        return; // Prevent publishing if user is not authenticated
-      }
-
-      String userId = user.uid;  // Get the authenticated user's uid
-
-      // Check if the user document exists
-      DocumentReference userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
-      var docSnapshot = await userDocRef.get();
-
-      // If the user document doesn't exist, create it
-      if (!docSnapshot.exists) {
-        await userDocRef.set({
-          'uid': userId,  // Add basic user data (optional)
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      // Now publish the events
-      await _controller.publishEventsToFirebase(userId, _eventsList);
-
-      // Optionally update the user's events in Firebase or perform any post-publish actions
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Events published to Firebase!"),
-      ));
-
-
-
-    } catch (e) {
-      print('Error publishing events: $e');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Error publishing events."),
-      ));
-    } finally {
-      setState(() {
-        _isLoading = false; // Hide loading indicator
-      });
-    }
-  }
 
   String formatDate(String date) {
     DateTime parsedDate = DateTime.parse(date);
@@ -262,7 +199,14 @@ class _UserEventListPageState extends State<UserEventListPage> {
               ),
               SizedBox(width: 10),
               ElevatedButton(
-                onPressed: _publishEventsToFirebase,
+                onPressed: () async {
+                  for (var event in _eventsList) {
+                    if (!event.syncStatus) {
+                      await _controller.publishEvent(event);
+                    }
+                  }
+                  await _loadEvents();
+                },
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: const Color(0xff273331),
@@ -278,9 +222,9 @@ class _UserEventListPageState extends State<UserEventListPage> {
               ),
             ],
           ),
-          SizedBox(height: 20,),
+          SizedBox(height: 20),
           _loadingIndicator(), // Show loading indicator if necessary
-          SizedBox(height: 20,),
+          SizedBox(height: 20),
           Expanded(
             child: ListView.builder(
               itemCount: _eventsList.length,
@@ -300,15 +244,26 @@ class _UserEventListPageState extends State<UserEventListPage> {
                       style: const TextStyle(fontSize: 14),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => _deleteEvent(event.id.toString()),
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        bool? confirm = await _confirmDeleteEvent(event.name);
+                        if (confirm == true) {
+                          // Proceed to delete the event
+                          await _controller.deleteEvent(event); // Call EventController to delete
+                          await _loadEvents(); // Reload the events list
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Event \"${event.name}\" deleted successfully.")),
+                          );
+                        }
+                      },
                     ),
                     onTap: () {
                       // Navigate to Gift List page, passing the event ID
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => UserGiftListPage(eventId: event.id!, eventName: event.name,),
+                          builder: (context) => UserGiftListPage(eventId: event.id!, eventName: event.name),
                         ),
                       );
                     },
@@ -317,7 +272,6 @@ class _UserEventListPageState extends State<UserEventListPage> {
               },
             ),
           )
-
         ],
       ),
     );
