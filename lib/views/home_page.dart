@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
 import 'package:hadieaty/controllers/friend_controller.dart';
 import 'package:hadieaty/models/event.dart';
+import '../controllers/photo_controller.dart';
 import '../services/firestore_service.dart';
 import '../services/shared_preference.dart';
 import '../services/sqlite_service.dart';
@@ -21,7 +22,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  FriendController friendController= FriendController();
+  FriendController friendController = FriendController();
   final EventController _eventController = EventController();
   final LocalDatabase _localDatabase = LocalDatabase();
   List<Friend> _friendsList = [];
@@ -29,6 +30,10 @@ class _HomePageState extends State<HomePage> {
   String _userName = '';
   String _userEmail = '';
   bool _friendsLoaded = false;
+  final PhotoController _photoController = PhotoController();
+  String _giftURL = '';
+  String _profileURL = '';
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -37,7 +42,16 @@ class _HomePageState extends State<HomePage> {
     //_friendsList = _controller.getFriends();
     _getUserName();
     _loadFriends();
+    _loadPhotoURLs();
+  }
 
+  Future<void> _loadPhotoURLs() async {
+    var urls = await _photoController.fetchPhotoURLs();
+    setState(() {
+      _giftURL = urls['giftURL']!;
+      _profileURL = urls['profileURL']!;
+      _isLoading = false;
+    });
   }
 
   // Fetch user name from local database
@@ -58,35 +72,36 @@ class _HomePageState extends State<HomePage> {
         .where('createdBy', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
-      var data = doc.data();
-      return Event.fromMap(data..['id'] = doc.id);
-    }).toList());
+              var data = doc.data();
+              return Event.fromMap(data..['id'] = doc.id);
+            }).toList());
   }
-
 
   Future<void> _loadFriends() async {
     String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (userId.isNotEmpty) {
-      var userDoc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
+      var userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .get();
       if (userDoc.exists) {
         List<dynamic> friendIds = userDoc.data()?['friends'] ?? [];
         setState(() {
-          _friendsList = friendIds.map((id) => Friend(
-            id: id,
-            name: 'Loading...', // Placeholder for name
-            profilePicture: '',
-            phone: '',
-            upcomingEventsCount: 0, // Event count handled by StreamBuilder
-          )).toList();
+          _friendsList = friendIds
+              .map((id) => Friend(
+                    id: id,
+                    name: 'Loading...',
+                    // Placeholder for name
+                    profilePicture: '',
+                    phone: '',
+                    upcomingEventsCount:
+                        0, // Event count handled by StreamBuilder
+                  ))
+              .toList();
         });
       }
     }
   }
-
-
-
-
-
 
   void _addFriend() async {
     TextEditingController emailController = TextEditingController();
@@ -131,7 +146,9 @@ class _HomePageState extends State<HomePage> {
                     });
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("${friendData['name']} added as a friend.")),
+                      SnackBar(
+                          content:
+                              Text("${friendData['name']} added as a friend.")),
                     );
 
                     // Reload the friends list
@@ -157,7 +174,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
   // Search functionality for friends
   // void _searchFriends(String query) {
   //   setState(() {
@@ -172,12 +188,12 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor:
-      preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
+          preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 50,
         backgroundColor:
-        preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
+            preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
         actions: [
           IconButton(
             icon: Icon(Icons.exit_to_app,
@@ -317,7 +333,7 @@ class _HomePageState extends State<HomePage> {
                         Text(
                           'Create new event/list',
                           style:
-                          TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
+                              TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
                         ),
                       ],
                     ),
@@ -329,21 +345,20 @@ class _HomePageState extends State<HomePage> {
           Card(
             elevation: 15,
             shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             child: InkWell(
               onTap: () async {
                 final updatedEvents = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        UserEventListPage(
-                          events: _userEvents,
-                          onEventsUpdated: (updatedEvents) {
-                            setState(() {
-                              _userEvents = updatedEvents;
-                            });
-                          },
-                        ),
+                    builder: (context) => UserEventListPage(
+                      events: _userEvents,
+                      onEventsUpdated: (updatedEvents) {
+                        setState(() {
+                          _userEvents = updatedEvents;
+                        });
+                      },
+                    ),
                   ),
                 );
                 if (updatedEvents != null) {
@@ -391,113 +406,115 @@ class _HomePageState extends State<HomePage> {
                 return _friendsList.isEmpty
                     ? Center(child: Text("No friends found."))
                     : ListView.builder(
-                  itemCount: _friendsList.length,
-                  itemBuilder: (context, index) {
-                    var friend = _friendsList[index];
-                    return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('Users').doc(friend.id).get(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Card(
-                            elevation: 5,
-                            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              contentPadding: EdgeInsets.all(10),
-                              title: Text(
-                                "Loading...",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text("Loading..."),
-                              trailing: CircularProgressIndicator(),
-                            ),
-                          );
-                        }
-
-                        if (!snapshot.hasData || !snapshot.data!.exists) {
-                          return ListTile(
-                            title: Text("No friend data available."),
-                          );
-                        }
-
-                        var friendData = snapshot.data!.data() as Map<String, dynamic>;
-
-                        return Card(
-                          elevation: 5,
-                          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.all(10),
-                            leading: CircleAvatar(
-                              radius: 30,
-                              backgroundImage: friendData['profilePicture'] != null &&
-                                  friendData['profilePicture'].isNotEmpty
-                                  ? NetworkImage(friendData['profilePicture'])
-                                  : AssetImage('lib/assets/images/default_profile.png')
-                              as ImageProvider,
-                              backgroundColor: Colors.grey[200],
-                            ),
-                            title: Text(
-                              friendData['name'] ?? "Unknown",
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                            ),
-                            subtitle: Text(
-                              friendData['phone'] ?? 'N/A',
-                              style: TextStyle(color: Colors.grey[700]),
-                            ),
-                            trailing: StreamBuilder<int>(
-                              stream: friendController.getUpcomingEventsCount(friend.id),
-                              builder: (context, eventSnapshot) {
-                                if (eventSnapshot.connectionState == ConnectionState.waiting) {
-                                  return Text("Loading...");
-                                }
-                                int eventCount = eventSnapshot.data ?? 0;
-                                return Text(
-                                  "$eventCount",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blueAccent,
+                        itemCount: _friendsList.length,
+                        itemBuilder: (context, index) {
+                          var friend = _friendsList[index];
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('Users')
+                                .doc(friend.id)
+                                .get(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Card(
+                                  elevation: 5,
+                                  margin: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.all(10),
+                                    title: Text(
+                                      "Loading...",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    subtitle: Text("Loading..."),
+                                    trailing: CircularProgressIndicator(),
                                   ),
                                 );
-                              },
-                            ),
+                              }
 
-                            onTap: () async {
-                              print("Fetching upcoming events for friend ID: ${friend.id}");
+                              if (!snapshot.hasData || !snapshot.data!.exists) {
+                                return ListTile(
+                                  title: Text("No friend data available."),
+                                );
+                              }
 
-                              var events = await FirestoreService()
-                                  .getUpcomingEventsForFriend(friend.id);
+                              var friendData =
+                                  snapshot.data!.data() as Map<String, dynamic>;
 
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => FriendEventListPage(
-                                    events: events,
-                                    friendName: friendData['name'],
-                                    friendId: friend.id,
+                              return Card(
+                                elevation: 5,
+                                margin: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.all(10),
+                                  leading: CircleAvatar(
+                                    radius: 30,
+                                    backgroundImage: NetworkImage(_profileURL),
                                   ),
+                                  title: Text(
+                                    friendData['name'] ?? "Unknown",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18),
+                                  ),
+                                  subtitle: Text(
+                                    friendData['phone'] ?? 'N/A',
+                                    style: TextStyle(color: Colors.grey[700]),
+                                  ),
+                                  trailing: StreamBuilder<int>(
+                                    stream: friendController
+                                        .getUpcomingEventsCount(friend.id),
+                                    builder: (context, eventSnapshot) {
+                                      if (eventSnapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return Text("Loading...");
+                                      }
+                                      int eventCount = eventSnapshot.data ?? 0;
+                                      return Text(
+                                        "Upcoming events: $eventCount",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  onTap: () async {
+                                    print(
+                                        "Fetching upcoming events for friend ID: ${friend.id}");
+
+                                    var events = await FirestoreService()
+                                        .getUpcomingEventsForFriend(friend.id);
+
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            FriendEventListPage(
+                                          events: events,
+                                          friendName: friendData['name'],
+                                          friendId: friend.id,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               );
                             },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-
-
+                          );
+                        },
+                      );
               },
             ),
-
-
           )
-
         ],
       ),
     );
