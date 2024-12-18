@@ -244,45 +244,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
               ),
             ),
             Divider(),
-
             // Notification Settings
             SwitchListTile(
               title: Text("Enable Notifications"),
               value: _userData['notifications'] ?? true,
               onChanged: _toggleNotifications,
-            ),
-            Divider(),
-
-            // Created Events Section
-            Text(
-              "My Created Events",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            _createdEvents.isEmpty
-                ? Text("You have not created any events yet.")
-                : ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: _createdEvents.length,
-              itemBuilder: (context, index) {
-                var event = _createdEvents[index];
-                return ListTile(
-                  title: Text(event.name),
-                  subtitle: Text("Date: ${event.date}"),
-                  onTap: () {
-                    // Navigate to UserGiftListPage instead of GiftListPage
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UserGiftListPage(
-                          eventName: event.name, firebaseEventId: event.id, // Pass eventId to the UserGiftListPage
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
             ),
             Divider(),
 
