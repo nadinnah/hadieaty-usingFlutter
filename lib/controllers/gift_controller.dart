@@ -11,14 +11,12 @@ class GiftController {
   // Add a new gift (local database + Firebase sync)
   Future<void> addGift(Gift gift) async {
     try {
-      // First, insert the gift locally with syncStatus = false
+      // Insert the gift locally with syncStatus = false
       gift.syncStatus = false;
       await localdb.insertGift(gift);
 
-      // Then, sync with Firebase if not already synced
-      if (gift.syncStatus == false) {
-        await _publishGiftToFirebase(gift);
-      }
+      // Sync with Firebase
+      await _publishGiftToFirebase(gift);
     } catch (e) {
       print("Error adding gift: $e");
     }
@@ -27,20 +25,13 @@ class GiftController {
   // Publish a gift to Firebase and update the syncStatus
   Future<void> _publishGiftToFirebase(Gift gift) async {
     try {
-      var userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) {
-        print("User not authenticated");
-        return;
-      }
-
-      var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
-      var eventDocRef = userDocRef.collection('events').doc(gift.eventId.toString());
+      var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId.toString());
 
       // Add the gift to Firebase
       var docRef = await eventDocRef.collection('gifts').add(gift.toMap());
 
-      // Once published, update the gift's id and syncStatus
-      gift.id = docRef.id as int?;
+      // Update the gift's Firebase ID and syncStatus
+      gift.id = docRef.id.hashCode; // Assign a local ID based on Firestore doc ID hash
       gift.syncStatus = true;
 
       // Update the local database with the new sync status
@@ -66,19 +57,12 @@ class GiftController {
       // Delete the gift from the local database
       await localdb.deleteGift(gift.id!);
 
-      // If the gift is synced, delete it from Firebase as well
-      if (gift.syncStatus == true) {
-        var userId = FirebaseAuth.instance.currentUser?.uid;
-        if (userId == null) {
-          print("User not authenticated");
-          return;
-        }
-
-        var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
-        var eventDocRef = userDocRef.collection('events').doc(gift.eventId.toString());
+      // If the gift is synced, delete it from Firebase
+      if (gift.syncStatus) {
+        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId.toString());
 
         // Delete the gift from Firebase
-        await eventDocRef.collection('gifts').doc(gift.id as String?).delete();
+        await eventDocRef.collection('gifts').doc(gift.id.toString()).delete();
       }
     } catch (e) {
       print("Error deleting gift: $e");
@@ -92,18 +76,11 @@ class GiftController {
       await localdb.updateGift(gift);
 
       // If gift is synced, update it in Firebase as well
-      if (gift.syncStatus == true) {
-        var userId = FirebaseAuth.instance.currentUser?.uid;
-        if (userId == null) {
-          print("User not authenticated");
-          return;
-        }
+      if (gift.syncStatus) {
+        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId.toString());
 
-        var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
-        var eventDocRef = userDocRef.collection('events').doc(gift.eventId.toString());
-
-        // Reference the gift in Firebase and update it
-        await eventDocRef.collection('gifts').doc(gift.id as String?).update(gift.toMap());
+        // Update the gift in Firebase
+        await eventDocRef.collection('gifts').doc(gift.id.toString()).update(gift.toMap());
       }
     } catch (e) {
       print("Error updating gift: $e");

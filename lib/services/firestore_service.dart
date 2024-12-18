@@ -37,21 +37,22 @@ class FirestoreService {
 
   Future<List<Event>> getUpcomingEventsForFriend(String friendId) async {
     try {
-      var snapshot = await _db
+      var snapshot = await FirebaseFirestore.instance
           .collection('Events')
-          .where('createdBy', isEqualTo: friendId) // Filter by friend ID
-          .where('date', isGreaterThan: Timestamp.now()) // Filter for upcoming events
+          .where('createdBy', isEqualTo: friendId)
+          .where('status', isEqualTo: 'Upcoming') // Filter by status
           .get();
 
       return snapshot.docs.map((doc) {
         var data = doc.data() as Map<String, dynamic>;
-        return Event.fromMap(data..['id'] = doc.id); // Convert to Event model
+        return Event.fromMap(data..['id'] = doc.id);
       }).toList();
     } catch (e) {
       print("Error fetching upcoming events for friend: $e");
       return [];
     }
   }
+
 
 
 

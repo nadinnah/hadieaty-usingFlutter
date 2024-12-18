@@ -37,6 +37,7 @@ class _HomePageState extends State<HomePage> {
     //_friendsList = _controller.getFriends();
     _getUserName();
     _loadFriends();
+
   }
 
   // Fetch user name from local database
@@ -51,19 +52,17 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Load events from local database
   Stream<List<Event>> getUserEventsStream() {
-    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
     return FirebaseFirestore.instance
         .collection('Events')
-        .where('createdBy', isEqualTo: userId)
+        .where('createdBy', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
       var data = doc.data();
       return Event.fromMap(data..['id'] = doc.id);
     }).toList());
   }
+
 
   Future<void> _loadFriends() async {
     String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -450,37 +449,24 @@ class _HomePageState extends State<HomePage> {
                               friendData['phone'] ?? 'N/A',
                               style: TextStyle(color: Colors.grey[700]),
                             ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  "Upcoming Events",
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                                ),
-                                SizedBox(height: 5),
-                                StreamBuilder<int>(
-                                  stream: FirestoreService().getUpcomingEventsCountStream(friend.id),
-                                  builder: (context, eventSnapshot) {
-                                    if (eventSnapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return Text(
-                                        "Loading...",
-                                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                                      );
-                                    }
-                                    int eventCount = eventSnapshot.data ?? 0;
-                                    return Text(
-                                      "$eventCount",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blueAccent,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
+                            trailing: StreamBuilder<int>(
+                              stream: friendController.getUpcomingEventsCount(friend.id),
+                              builder: (context, eventSnapshot) {
+                                if (eventSnapshot.connectionState == ConnectionState.waiting) {
+                                  return Text("Loading...");
+                                }
+                                int eventCount = eventSnapshot.data ?? 0;
+                                return Text(
+                                  "$eventCount",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blueAccent,
+                                  ),
+                                );
+                              },
                             ),
+
                             onTap: () async {
                               print("Fetching upcoming events for friend ID: ${friend.id}");
 

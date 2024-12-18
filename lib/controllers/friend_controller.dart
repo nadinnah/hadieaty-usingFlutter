@@ -1,69 +1,67 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/friend.dart';
 
-class FriendController with ChangeNotifier {
+class FriendController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  List<Friend> _friends = [];
-  List<Friend> _filteredFriends = [];
-
-  List<Friend> get friends => _filteredFriends.isEmpty ? _friends : _filteredFriends;
-
-  Future<List<Friend>> getFriendsDetails(List<dynamic> friendsUids) async {
-    try {
-      List<Friend> friends = [];
-      for (var uid in friendsUids) {
-        // Fetch each friend's details by UID from Firestore
-        var friendDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
-        if (friendDoc.exists) {
-          var friendData = friendDoc.data() as Map<String, dynamic>;
-          friends.add(Friend.fromFirestore(uid, friendData));
-        }
-      }
-      return friends;
-    } catch (e) {
-      print("Error fetching friends details: $e");
-      return [];
-    }
-  }
-  
   Stream<int> getUpcomingEventsCount(String friendId) {
     return FirebaseFirestore.instance
         .collection('Events')
         .where('createdBy', isEqualTo: friendId)
-        .where('date', isGreaterThan: Timestamp.now())
+        .where('status', isEqualTo: 'Upcoming') // Filter for upcoming events
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
 
-  // Fetch friends for the logged-in user by checking users with isOwner=false
-  Future<void> fetchFriends() async {
+
+  Future<List<Friend>> fetchFriends() async {
     try {
       String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      // Fetch all users with isOwner=false from the 'Users' collection
-      var snapshot = await _firestore.collection('Users').where('isOwner', isEqualTo: false).get();
+      // Fetch the current user's friends list
+      var userDoc = await _firestore.collection('Users').doc(userId).get();
+      var friendsIds = userDoc.data()?['friends'] ?? [];
 
-      // Filter out the logged-in user from the friends list
-      var usersList = snapshot.docs.where((doc) => doc.id != userId).toList();
+      // Fetch details for each friend
+      List<Friend> friends = await Future.wait(friendsIds.map((friendId) async {
+        var friendDoc = await _firestore.collection('Users').doc(friendId).get();
+        var friendData = friendDoc.data();
 
-      // Map each user document to a Friend object
-      _friends = usersList.map((doc) {
-        var data = doc.data();
-        return Friend(
-          id: doc.id,  // Use the document ID as a unique identifier for each friend
-          name: data['name'],
-          profilePicture: data['profilePicture'] ?? '',
-          phone: data['phone'] ?? '',
-          upcomingEventsCount: data['upcomingEventsCount'] ?? 0,
-        );
-      }).toList();
+        if (friendData != null) {
+          // Fetch upcoming events count for the friend
+          int eventCount = await _fetchUpcomingEventsCount(friendId);
+          return Friend(
+            id: friendId,
+            name: friendData['name'],
+            profilePicture: friendData['profilePicture'] ?? '',
+            phone: friendData['phone'] ?? '',
+            upcomingEventsCount: eventCount,
+          );
+        }
+        return null;
+      }).whereType<Friend>().toList());
 
-      notifyListeners();
+      return friends;
     } catch (e) {
       print('Error fetching friends: $e');
+      return [];
+    }
+  }
+
+  // Fetch upcoming events count for a friend
+  Future<int> _fetchUpcomingEventsCount(String friendId) async {
+    try {
+      var snapshot = await _firestore
+          .collection('Events')
+          .where('createdBy', isEqualTo: friendId)
+          .where('status', isEqualTo: 'Upcoming')
+          .get();
+
+      return snapshot.docs.length;
+    } catch (e) {
+      print('Error fetching upcoming events count: $e');
+      return 0;
     }
   }
 
@@ -72,23 +70,15 @@ class FriendController with ChangeNotifier {
     try {
       String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      // Add friend to the current user's 'friends' list in Firestore
+      // Add friend to the current user's `friends` list
       await _firestore.collection('Users').doc(userId).update({
         'friends': FieldValue.arrayUnion([friendUserId]),
       });
 
-      // Optionally, you can add the current user to the friend's 'friends' list as well
+      // Optionally add the current user to the friend's `friends` list
       await _firestore.collection('Users').doc(friendUserId).update({
         'friends': FieldValue.arrayUnion([userId]),
       });
-
-      // Fetch the updated friend's data
-      var friendSnapshot = await _firestore.collection('Users').doc(friendUserId).get();
-      var friendData = friendSnapshot.data();
-      if (friendData != null) {
-        _friends.add(Friend.fromFirestore(friendUserId, friendData));
-        notifyListeners();
-      }
     } catch (e) {
       print('Error adding friend: $e');
     }
@@ -99,35 +89,17 @@ class FriendController with ChangeNotifier {
     try {
       String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      // Remove friend from the current user's 'friends' list
+      // Remove friend from the current user's `friends` list
       await _firestore.collection('Users').doc(userId).update({
         'friends': FieldValue.arrayRemove([friendUserId]),
       });
 
-      // Optionally, remove the current user from the friend's 'friends' list as well
+      // Optionally remove the current user from the friend's `friends` list
       await _firestore.collection('Users').doc(friendUserId).update({
         'friends': FieldValue.arrayRemove([userId]),
       });
-
-      // Remove friend from the local list
-      _friends.removeWhere((friend) => friend.id == friendUserId);
-      notifyListeners();
     } catch (e) {
       print('Error deleting friend: $e');
     }
-  }
-
-  // Search for friends by name or phone number
-  void searchFriends(String query) {
-    if (query.isEmpty) {
-      _filteredFriends = [];
-    } else {
-      _filteredFriends = _friends
-          .where((friend) =>
-      friend.name.toLowerCase().contains(query.toLowerCase()) ||
-          friend.phone.contains(query))
-          .toList();
-    }
-    notifyListeners();
   }
 }

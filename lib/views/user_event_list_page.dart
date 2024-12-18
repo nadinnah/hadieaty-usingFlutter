@@ -82,13 +82,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
   }
 
 
-  void _editEvent(Event event) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AddEventPage(event: event)),
-    );
-    await _loadEvents();
-  }
+
 
   void _searchEvents(String query) {
     setState(() {
