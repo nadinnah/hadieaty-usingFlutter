@@ -31,7 +31,6 @@ class _UserEventListPageState extends State<UserEventListPage> {
   @override
   void initState() {
     super.initState();
-    _eventsList = widget.events;
     _loadEvents();
   }
 
@@ -50,16 +49,13 @@ class _UserEventListPageState extends State<UserEventListPage> {
     setState(() => _isLoading = true);
 
     var events = await _controller.getEventsForCurrentUser();
-    print("Events Loaded: ${events.length}");
-    for (var event in events) {
-      print(event.name); // Log each event
-    }
 
     setState(() {
       _eventsList = events;
       _isLoading = false;
     });
   }
+
 
 
   Future<bool?> _confirmDeleteEvent(String eventName) async {
@@ -97,13 +93,30 @@ class _UserEventListPageState extends State<UserEventListPage> {
   void _searchEvents(String query) {
     setState(() {
       _searchQuery = query;
-      _eventsList = widget.events
-          .where((event) =>
-          event.name.toLowerCase().contains(query.toLowerCase()))
+      _eventsList = _eventsList
+          .where((event) => event.name.toLowerCase().contains(query.toLowerCase()))
           .toList();
       _applySorting();
     });
   }
+
+
+  Future<void> _publishSingleEvent(Event event) async {
+    try {
+      await _controller.syncEventToFirebase(event); // Sync changes to Firebase
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Event '${event.name}' published successfully!")),
+      );
+      await _loadEvents(); // Refresh events to reflect updated status
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to publish event '${event.name}'. Please try again.")),
+      );
+      print("Error publishing event: $e");
+    }
+  }
+
+
 
   void _sortEvents(String option) {
     setState(() {
@@ -139,11 +152,12 @@ class _UserEventListPageState extends State<UserEventListPage> {
   Widget _emptyState() {
     return Center(
       child: Text(
-        "No events found. Add a new event to get started!",
+        "No events found. Click 'Add New Event' to get started!",
         style: TextStyle(fontSize: 18, color: Colors.grey),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -197,36 +211,18 @@ class _UserEventListPageState extends State<UserEventListPage> {
                   style: TextStyle(fontSize: 18),
                 ),
               ),
-              SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () async {
-                  for (var event in _eventsList) {
-                    if (!event.syncStatus) {
-                      await _controller.publishEvent(event);
-                    }
-                  }
-                  await _loadEvents();
-                },
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: const Color(0xff273331),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Publish Events to Firebase',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
+
             ],
           ),
           SizedBox(height: 20),
           _loadingIndicator(), // Show loading indicator if necessary
           SizedBox(height: 20),
           Expanded(
-            child: ListView.builder(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _eventsList.isEmpty
+                ? _emptyState()
+                : ListView.builder(
               itemCount: _eventsList.length,
               itemBuilder: (context, index) {
                 var event = _eventsList[index];
@@ -236,42 +232,52 @@ class _UserEventListPageState extends State<UserEventListPage> {
                   child: ListTile(
                     leading: IconButton(
                       icon: const Icon(Icons.edit),
-                      onPressed: () => _editEvent(event),
+                      onPressed: () async {
+                        bool? result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => AddEventPage(event: event)),
+                        );
+                        if (result == true) await _loadEvents(); // Reload events
+                      },
                     ),
                     title: Text(event.name),
                     subtitle: Text(
-                      "Category: ${event.category}\nStatus: ${event.status}\nCreated At: ${formatDate(event.createdAt)}",
-                      style: const TextStyle(fontSize: 14),
+                      "Location: ${event.location}\n"
+                          "Status: ${event.status}\n"
+                          "Date: ${event.date}",
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () async {
-                        // Show confirmation dialog
-                        bool? confirm = await _confirmDeleteEvent(event.name);
-                        if (confirm == true) {
-                          // Proceed to delete the event
-                          await _controller.deleteEvent(event); // Call EventController to delete
-                          await _loadEvents(); // Reload the events list
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Event \"${event.name}\" deleted successfully.")),
-                          );
-                        }
-                      },
-                    ),
-                    onTap: () {
-                      // Navigate to Gift List page, passing the event ID
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => UserGiftListPage(eventId: event.id!, eventName: event.name),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!event.syncStatus)
+                          ElevatedButton(
+                            onPressed: () async {
+                              await _publishSingleEvent(event);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text("Publish"),
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            bool? confirm = await _confirmDeleteEvent(event.name);
+                            if (confirm == true) {
+                              await _controller.deleteEvent(event);
+                              await _loadEvents();
+                            }
+                          },
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
                 );
               },
             ),
-          )
+          ),
+
         ],
       ),
     );

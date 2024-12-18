@@ -33,9 +33,22 @@ class LocalDatabase {
       print("Database does not exist, no need to delete.");
     }
   }
+  Future<void> clearDatabase() async {
+    final db = await _MyDataBase;
+
+    // Delete all data from each table
+    await db!.delete('Events');
+    await db.delete('Gifts');
+    await db.delete('Users');
+
+    print("All data cleared from the database.");
+  }
+
 
   // Initialize the database
   initialize() async {
+
+
     String mypath = await getDatabasesPath();
     String path = join(mypath, 'myDataBase12.db');
     Database mydb = await openDatabase(path, version: Version, onCreate: (db, Version) async {
@@ -65,7 +78,7 @@ class LocalDatabase {
           createdBy TEXT,  -- Keep 'createdBy' column for the Firebase UID
           status TEXT,
           category TEXT,
-          syncStatus TEXT NOT NULL DEFAULT '0',
+          syncStatus TEXT NOT NULL DEFAULT 'Unsynced',
           createdAt TEXT,
           FOREIGN KEY (createdBy) REFERENCES Users (id)  -- Referencing the user via createdBy
       );
@@ -89,7 +102,7 @@ class LocalDatabase {
 
       print("Database initialized.");
     });
-
+   // await clearDatabase();
     return mydb;
   }
 
@@ -165,19 +178,29 @@ class LocalDatabase {
     );
     return result;  // Return the ID of the inserted event
   }//USED
-
   Future<int> updateEvent(Event event) async {
     final db = await MyDataBase;
+
+    // Convert the event object into a map with required updates
     return await db!.update(
       'Events',
       {
-        'syncStatus': event.syncStatus ? 1 : 0,
         'firebaseId': event.firebaseId, // Store Firestore ID
+        'syncStatus': event.syncStatus ? 'Synced' : 'Unsynced', // Store as Synced/Unsynced
+        'name': event.name,
+        'date': event.date,
+        'location': event.location,
+        'description': event.description,
+        'createdBy': event.createdBy,
+        'status': event.status,
+        'category': event.category,
+        'createdAt': event.createdAt,
       },
-      where: 'id = ?',
+      where: 'id = ?', // Match by event ID
       whereArgs: [event.id],
     );
-  }//USED
+  }
+
 
 
 

@@ -49,50 +49,45 @@ class _AddEventPageState extends State<AddEventPage> {
       _createdBy = event.createdBy; // Use existing createdBy value if editing
     }
   }
-
   Future<void> _addOrUpdateEvent() async {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
-      Event newEvent = Event(
+      Event updatedEvent = Event(
+        id: widget.event?.id, // Use existing ID for edits
         name: _name,
         description: _description,
         date: _dateController.text,
         location: _location,
         category: _category,
         status: _status,
-        createdAt: _createdAt,
-        createdBy: FirebaseAuth.instance.currentUser?.uid ?? '', // Set createdBy
-        syncStatus: _syncStatus,
+        createdAt: widget.event?.createdAt ?? DateTime.now().toIso8601String(),
+        createdBy: FirebaseAuth.instance.currentUser?.uid ?? '',
+        syncStatus: widget.event?.syncStatus ?? false, // Preserve syncStatus
+        firebaseId: widget.event?.firebaseId, // Preserve firebaseId
       );
 
       bool success;
-
       if (widget.event == null) {
-        // Add new event
-        success = await _controller.addEventLocally(newEvent);
+        success = await _controller.addEventLocally(updatedEvent);
       } else {
-        // Update existing event
-        success = await _controller.updateEvent(newEvent);
+        success = await _controller.updateEvent(updatedEvent);
       }
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Event ${widget.event == null ? 'added' : 'updated'} successfully"),
-          ),
+          SnackBar(content: Text("Event ${widget.event == null ? 'added' : 'updated'} successfully.")),
         );
-        Navigator.pop(context, true); // Return a success flag
-
+        Navigator.pop(context, true); // Return success flag to refresh parent
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to save event."),
-          ),
+          SnackBar(content: Text("Failed to save event.")),
         );
       }
     }
   }
+
+
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(

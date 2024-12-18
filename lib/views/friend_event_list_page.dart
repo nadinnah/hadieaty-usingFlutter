@@ -15,7 +15,6 @@ class FriendEventListPage extends StatelessWidget {
   });
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffefefef),
@@ -30,14 +29,13 @@ class FriendEventListPage extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('Events')
             .where('createdBy', isEqualTo: friendId)
-            .where('date', isGreaterThan: Timestamp.now())
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text("No upcoming events for $friendName."));
+            return Center(child: Text("No events available for $friendName."));
           }
 
           var events = snapshot.data!.docs.map((doc) {
@@ -54,11 +52,11 @@ class FriendEventListPage extends StatelessWidget {
                 child: ListTile(
                   title: Text(event.name),
                   subtitle: Text(
-                    "Category: ${event.category}\nStatus: ${event.status}\nCreated At: ${event.createdAt}",
+                    "Location: ${event.location}\n"
+                        "Status: ${event.status}\n"
+                        "Date: ${event.date}",
+                    style: TextStyle(fontSize: 14),
                   ),
-                  onTap: () {
-                    // Navigate to Friend's Gift List
-                  },
                 ),
               );
             },
@@ -66,8 +64,7 @@ class FriendEventListPage extends StatelessWidget {
         },
       ),
     );
-
-}
+  }
 
 }
 
