@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import '../controllers/gift_controller.dart';
 import '../models/gift.dart';
 import '../services/sqlite_service.dart';
 import 'gift_details_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class UserGiftListPage extends StatefulWidget {
   final String eventName;
-  final int eventId; // Pass eventId to fetch related gifts
+  final String firebaseEventId; // Firestore Event ID
 
   UserGiftListPage({
     required this.eventName,
-    required this.eventId,
+    required this.firebaseEventId,
   });
 
   @override
@@ -20,141 +20,101 @@ class UserGiftListPage extends StatefulWidget {
 
 class _UserGiftListPageState extends State<UserGiftListPage> {
   final LocalDatabase _localDatabase = LocalDatabase();
+  final GiftController _giftController = GiftController(localdb: LocalDatabase());
   List<Gift> _giftsList = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadGifts(); // Load gifts related to the event from the local database
+    _loadGifts();
   }
 
-  // Load gifts related to the event from the local database
+  // Simulating the logged-in user's ID for this example
+  final String currentUserId = "USER_FIREBASE_ID"; // Replace with actual Firebase UID
+
+  void _publishGift(Gift gift) async {
+    try {
+      await _giftController.syncGiftToFirebase(gift);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("${gift.name} published successfully!")),
+      );
+      _loadGifts(); // Reload gifts to reflect changes
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error publishing ${gift.name}: $e")),
+      );
+    }
+  }
+
+  // Load gifts from the local database
   void _loadGifts() async {
-    var giftsData = await _localDatabase.getGiftsByEventId(widget.eventId);
+    setState(() => _isLoading = true);
+    var giftsData = await _localDatabase.getGiftsByEventId(widget.firebaseEventId);
     setState(() {
       _giftsList = giftsData.map((e) => Gift.fromMap(e)).toList();
+      _isLoading = false;
     });
   }
 
+  // Add a new gift
   void _addGift() async {
-    // Navigate to GiftDetailsPage to input gift data
     Gift? newGift = await Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) =>
-              GiftDetailsPage(gift: Gift(
-                name: '',
-                category: '',
-                price: 0.0,
-                status: 'available',
-                eventId: widget.eventId,
-                syncStatus: false,
-                description: '',
-                imageUrl: '',
-              ))),
+        builder: (context) => GiftDetailsPage(
+          gift: Gift(
+            name: '',
+            category: '',
+            price: 0.0,
+            status: 'Available',
+            eventId: widget.firebaseEventId,
+            syncStatus: "Unsynced",
+            description: '',
+            imageUrl: '',
+          ),
+        ),
+      ),
     );
 
-    // If the user didn't cancel the action and the gift is not null, save it
     if (newGift != null) {
-      await _localDatabase.insertGift(newGift); // Insert the new gift into local DB
-      _loadGifts(); // Reload the gifts after insertion
+      await _localDatabase.insertGift(newGift);
+      _loadGifts();
     }
   }
 
-  Future<void> _publishGiftsToFirebase() async {
-    setState(() {
-      _isLoading = true;
-    });
 
+  // Delete a gift locally and from Firestore if synced
+  void _deleteGift(Gift gift) async {
     try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("User not authenticated.")));
-        return;
-      }
-
-      String userId = user.uid;
-
-      // Iterate through all gifts and sync them with Firebase
-      for (var gift in _giftsList) {
-        if (!gift.syncStatus) {
-          var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
-          var docRef = await userDocRef.collection('events').doc(widget.eventId.toString()).collection('gifts').add({
-            'name': gift.name,
-            'category': gift.category,
-            'price': gift.price,
-            'status': gift.status,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-          // After successful upload, mark the gift as synced
-          setState(() {
-            gift.syncStatus = true; // Update the gift's sync status locally
-          });
-
-          // Now update the gift in the local database
-          await _localDatabase.updateTheGift(gift.id!, gift); // Ensure the gift object is updated correctly
-        }
-      }
-
+      await _giftController.deleteGift(gift);
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gifts published to Firebase!")));
+        SnackBar(content: Text("${gift.name} deleted successfully!")),
+      );
+      _loadGifts(); // Reload gifts
     } catch (e) {
-      print("Error publishing gifts: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error publishing gifts.")));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+        SnackBar(content: Text("Error deleting ${gift.name}: $e")),
+      );
     }
   }
 
-  void _updateGiftStatus(Gift gift, bool value) async {
-    setState(() {
-      gift.status = value ? "pledged" : "available"; // Toggle the status
-    });
+  // Edit a gift locally
+  void _editGift(Gift gift) async {
+    Gift? updatedGift = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => GiftDetailsPage(gift: gift)),
+    );
 
-    // Update the status in the local database
-    await _localDatabase.updateTheGift(gift.id!, gift);
-
-    try {
-      // Update Firestore directly
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User not authenticated.")));
-        return;
-      }
-
-      String userId = user.uid;
-
-      // Convert the gift's ID to a String if it's an integer
-      String giftIdString = gift.id.toString();
-
-      // Update the status in the Firestore document for this specific gift
-      var userDocRef = FirebaseFirestore.instance.collection('Users').doc(userId);
-      var giftDocRef = userDocRef
-          .collection('events')
-          .doc(widget.eventId.toString())
-          .collection('gifts')
-          .doc(giftIdString);  // Use the gift's ID (converted to String)
-
-      await giftDocRef.update({
-        'status': gift.status,  // Update the status field in Firestore
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gift status updated in Firebase!")));
-    } catch (e) {
-      print("Error updating gift status in Firebase: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error updating status in Firebase.")));
+    if (updatedGift != null) {
+      await _localDatabase.updateGift(updatedGift);
+      _loadGifts();
     }
   }
 
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xffefefef),
       appBar: AppBar(
         backgroundColor: const Color(0xffefefef),
@@ -163,129 +123,70 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: _addGift,
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: const Color(0xff273331),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    "Add Gift",
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: _publishGiftsToFirebase,
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: const Color(0xff273331),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : const Text(
-                    "Publish Gifts to Firebase",
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _giftsList.length,
-                itemBuilder: (context, index) {
-                  Gift gift = _giftsList[index];
-                  return Card(
-                    elevation: 3,
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    color: gift.status == "pledged" ? Colors.red[100] : Colors.green[100],
-                    child: ListTile(
-                      leading: IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () async {
-                          Gift? updatedGift = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => GiftDetailsPage(gift: gift),
-                            ),
-                          );
-                          if (updatedGift != null) {
-                            setState(() {
-                              _giftsList[index] = updatedGift;
-                            });
-                            await _localDatabase.updateTheGift(gift.id!, updatedGift);
-                          }
-                        },
-                      ),
-                      title: Text(gift.name),
-                      subtitle: Text(
-                        "Category: ${gift.category ?? 'N/A'}\nPrice: \$${gift.price ?? 0.0}",
-                        style: TextStyle(
-                          color: gift.status == "pledged" ? Colors.red : Colors.green,
-                        ),
-                      ),
-                      trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Add the status toggle switch
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Switch(
-                              value: gift.status == "pledged", // Map pledged status to true
-                              onChanged: (value) {
-                                _updateGiftStatus(gift, value);
-                              },
-                            ),
-                            Text(
-                              gift.status == "pledged" ? "Pledged" : "Available",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),IconButton(
-                          icon: Icon(Icons.delete),
-                          onPressed: () async {
-                            await _localDatabase.deleteGift(gift.id!); // Delete the gift from the database
-                            setState(() {
-                              _giftsList.removeAt(index);
-                            });
-                          },
-                        ),
-
-                      ],
-                    ),
-                    ),
-                  );
-                },
+      body: Column(
+        children: [
+          // Add Gift Button
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: ElevatedButton(
+              onPressed: _addGift,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xff273331),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              ),
+              child: const Text(
+                "Add Gift",
+                style: TextStyle(fontSize: 18, color: Colors.white),
               ),
             ),
-          ],
-        ),
+          ),
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : Expanded(
+            child: ListView.builder(
+              itemCount: _giftsList.length,
+              itemBuilder: (context, index) {
+                var gift = _giftsList[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  elevation: 3,
+                  child: ListTile(
+                    leading: IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.green),
+                      onPressed: () => _editGift(gift),
+                    ),
+                    title: Text(
+                      gift.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      "Category: ${gift.category}\nPrice: \$${gift.price}\nStatus: ${gift.status}",
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Publish Button
+                        if (gift.syncStatus == "Unsynced")
+                          ElevatedButton(
+                            onPressed: () => _publishGift(gift),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                            child: const Text("Publish"),
+                          ),
+
+                        // Delete Button
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteGift(gift),
+                        ),
+                      ],
+                    ),
+
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -98,18 +98,21 @@ class EventController {
     return await FirestoreService().getUserEvents(userId);
   }
 
-  // Sync an event to Firestore and update locally
   Future<void> syncEventToFirebase(Event event) async {
     try {
       DocumentReference eventRef;
 
-      if (event.firebaseId == null) {
+      if (event.firebaseId == null || event.firebaseId!.isEmpty) {
         // Add new event to Firestore
-        eventRef = await _firestore.collection('Events').add(event.toMap());
-        event.firebaseId = eventRef.id;
+        eventRef = await FirebaseFirestore.instance.collection('Events').add(event.toMap());
+        event.firebaseId = eventRef.id; // Set the Firestore document ID as firebaseId
+        await FirebaseFirestore.instance
+            .collection('Events')
+            .doc(eventRef.id)
+            .update({'firebaseId': eventRef.id}); // Update the document with its ID
       } else {
-        // Update existing event in Firestore
-        eventRef = _firestore.collection('Events').doc(event.firebaseId);
+        // Update existing event
+        eventRef = FirebaseFirestore.instance.collection('Events').doc(event.firebaseId);
         await eventRef.update(event.toMap());
       }
 
@@ -117,9 +120,10 @@ class EventController {
       event.syncStatus = true;
       await localdb.updateEvent(event);
 
-      print("Event successfully synced to Firestore.");
+      print("Event successfully synced to Firestore with ID ${event.firebaseId}.");
     } catch (e) {
       print("Error syncing event to Firestore: $e");
     }
   }
+
 }

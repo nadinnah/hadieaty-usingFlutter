@@ -224,6 +224,14 @@ class _UserEventListPageState extends State<UserEventListPage> {
                   elevation: 3,
                   margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                   child: ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => UserGiftListPage(eventName: event.name, firebaseEventId: event.firebaseId!,),
+                        ),
+                      );
+                    },
                     leading: IconButton(
                       icon: const Icon(Icons.edit),
                       onPressed: () async {

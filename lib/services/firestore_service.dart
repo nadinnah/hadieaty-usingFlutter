@@ -92,7 +92,23 @@ class FirestoreService {
     }
   }
 
+  // Fetch pledged gifts for the logged-in user across all events
+  Future<List<Gift>> getPledgedGiftsByUser(String userId) async {
+    try {
+      var snapshot = await _db
+          .collectionGroup('gifts') // Search across all "gifts" subcollections
+          .where('pledgedBy', isEqualTo: userId) // Filter by pledgedBy
+          .get();
 
+      return snapshot.docs.map((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        return Gift.fromMap({...data, 'firebaseId': doc.id});
+      }).toList();
+    } catch (e) {
+      print("Error fetching pledged gifts from Firestore: $e");
+      throw Exception("Failed to fetch pledged gifts");
+    }
+  }
   // Future<int> getUpcomingEventsCount(String friendId) async {
   //   try {
   //     QuerySnapshot snapshot = await FirebaseFirestore.instance

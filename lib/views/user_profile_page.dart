@@ -276,8 +276,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => UserGiftListPage(
-                          eventName: event.name,
-                          eventId: event.id!, // Pass eventId to the UserGiftListPage
+                          eventName: event.name, firebaseEventId: event.id, // Pass eventId to the UserGiftListPage
                         ),
                       ),
                     );
@@ -306,7 +305,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PledgedGiftsPage(pledgedGifts: _pledgedGifts),
+        builder: (context) => PledgedGiftsPage(),
       ),
     );
   }

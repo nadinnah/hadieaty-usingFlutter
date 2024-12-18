@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/gift.dart';
 import '../services/sqlite_service.dart';
 
@@ -8,82 +7,108 @@ class GiftController {
 
   GiftController({required this.localdb});
 
-  // Add a new gift (local database + Firebase sync)
-  Future<void> addGift(Gift gift) async {
-    try {
-      // Insert the gift locally with syncStatus = false
-      gift.syncStatus = false;
-      await localdb.insertGift(gift);
-
-      // Sync with Firebase
-      await _publishGiftToFirebase(gift);
-    } catch (e) {
-      print("Error adding gift: $e");
+  // Pledge a gift
+  Future<void> pledgeGift(Gift gift, String userId) async {
+    if (gift.status != "Available") {
+      throw Exception("Gift is not available for pledging.");
     }
-  }
 
-  // Publish a gift to Firebase and update the syncStatus
-  Future<void> _publishGiftToFirebase(Gift gift) async {
     try {
-      var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId.toString());
+      gift.status = "Pledged";
+      gift.pledgedBy = userId;
 
-      // Add the gift to Firebase
-      var docRef = await eventDocRef.collection('gifts').add(gift.toMap());
-
-      // Update the gift's Firebase ID and syncStatus
-      gift.id = docRef.id.hashCode; // Assign a local ID based on Firestore doc ID hash
-      gift.syncStatus = true;
-
-      // Update the local database with the new sync status
+      // Update locally
       await localdb.updateGift(gift);
+
+      // Sync with Firestore if already published
+      if (gift.firebaseId.isNotEmpty) {
+        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId);
+        var giftDocRef = eventDocRef.collection('gifts').doc(gift.firebaseId);
+
+        await giftDocRef.update({
+          'status': "Pledged",
+          'pledgedBy': userId,
+        });
+      }
     } catch (e) {
-      print("Error publishing gift to Firebase: $e");
+      print("Error pledging gift: $e");
+      throw Exception("Failed to pledge the gift.");
     }
   }
 
-  // Fetch all gifts for a specific event from the local database
-  Future<List<Object>> fetchGiftsForEvent(int eventId) async {
+  // Purchase a gift
+  Future<void> purchaseGift(Gift gift, String userId) async {
+    if (gift.status != "Pledged") {
+      throw Exception("Gift must be pledged before it can be purchased.");
+    }
+
+    if (gift.pledgedBy != userId) {
+      throw Exception("Only the user who pledged the gift can purchase it.");
+    }
+
     try {
-      return await localdb.getGiftsForEvent(eventId);
+      gift.status = "Purchased";
+
+      // Update locally
+      await localdb.updateGift(gift);
+
+      // Sync with Firestore if already published
+      if (gift.firebaseId.isNotEmpty) {
+        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId);
+        var giftDocRef = eventDocRef.collection('gifts').doc(gift.firebaseId);
+
+        await giftDocRef.update({
+          'status': "Purchased",
+        });
+      }
     } catch (e) {
-      print("Error fetching gifts from local database: $e");
-      return [];
+      print("Error purchasing gift: $e");
+      throw Exception("Failed to purchase the gift.");
     }
   }
 
-  // Unified method to delete the gift from both local database and Firebase
   Future<void> deleteGift(Gift gift) async {
     try {
       // Delete the gift from the local database
       await localdb.deleteGift(gift.id!);
 
-      // If the gift is synced, delete it from Firebase
-      if (gift.syncStatus) {
-        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId.toString());
-
-        // Delete the gift from Firebase
-        await eventDocRef.collection('gifts').doc(gift.id.toString()).delete();
+      // If synced, delete the gift from Firestore
+      if (gift.syncStatus == "Synced" && gift.firebaseId.isNotEmpty) {
+        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId);
+        await eventDocRef.collection('gifts').doc(gift.firebaseId).delete();
       }
+
+      print("${gift.name} deleted successfully.");
     } catch (e) {
       print("Error deleting gift: $e");
+      throw Exception("Failed to delete the gift.");
     }
   }
-
-  // Unified method to update the gift in both local database and Firebase
-  Future<void> updateGift(Gift gift) async {
+  // Sync a gift to Firestore and update locally
+  Future<void> syncGiftToFirebase(Gift gift) async {
     try {
-      // Update the gift in local database
+      DocumentReference giftRef;
+
+      if (gift.firebaseId.isEmpty) {
+        // Add new gift to Firestore
+        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId);
+        giftRef = await eventDocRef.collection('gifts').add(gift.toMap());
+        gift.firebaseId = giftRef.id; // Save Firestore ID
+      } else {
+        // Update existing gift in Firestore
+        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId);
+        giftRef = eventDocRef.collection('gifts').doc(gift.firebaseId);
+        await giftRef.update(gift.toMap());
+      }
+
+      // Mark as synced locally
+      gift.syncStatus = "Synced";
       await localdb.updateGift(gift);
 
-      // If gift is synced, update it in Firebase as well
-      if (gift.syncStatus) {
-        var eventDocRef = FirebaseFirestore.instance.collection('Events').doc(gift.eventId.toString());
-
-        // Update the gift in Firebase
-        await eventDocRef.collection('gifts').doc(gift.id.toString()).update(gift.toMap());
-      }
+      print("Gift successfully synced to Firestore.");
     } catch (e) {
-      print("Error updating gift: $e");
+      print("Error syncing gift to Firestore: $e");
+      throw Exception("Failed to sync gift.");
     }
   }
 }

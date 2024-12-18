@@ -46,8 +46,8 @@ class Event {
 
   factory Event.fromMap(Map<String, dynamic> map) {
     return Event(
-      id: map['id'] as int?,
-      firebaseId: map['firebaseId'] as String?, // Allow firebaseId to be null
+      id: map['id'] ,
+      firebaseId: map['firebaseId'], // Allow firebaseId to be null
       name: map['name'] as String? ?? 'Unknown Event', // Fallback to 'Unknown Event'
       date: (map['date'] is Timestamp)
           ? (map['date'] as Timestamp).toDate().toIso8601String() // Convert Timestamp to String

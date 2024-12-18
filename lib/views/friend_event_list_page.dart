@@ -50,6 +50,20 @@ class FriendEventListPage extends StatelessWidget {
                 elevation: 3,
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ListTile(
+                  onTap: () {
+                    
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FriendGiftListPage(
+                          firebaseEventId: event.firebaseId!, // Ensure this is not null
+                          eventName: event.name,
+                          friendId: friendId,
+                        ),
+                      ),
+                    );
+                  },
+
                   title: Text(event.name),
                   subtitle: Text(
                     "Location: ${event.location}\n"
