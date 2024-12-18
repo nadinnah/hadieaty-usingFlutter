@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Event {
   dynamic id; // SQLite ID
   String? firebaseId; // Firestore Document ID
@@ -42,20 +44,25 @@ class Event {
     };
   }
 
-  // Create Event from Map
   factory Event.fromMap(Map<String, dynamic> map) {
     return Event(
       id: map['id'] as int?,
-      firebaseId: map['firebaseId'] as String?,
-      name: map['name'] as String,
-      date: map['date'] as String,
-      location: map['location'] as String,
-      description: map['description'] as String,
-      createdBy: map['createdBy'] as String, // Parse createdBy (Firebase UID)
-      status: map['status'] as String,
-      category: map['category'] as String,
+      firebaseId: map['firebaseId'] as String?, // Allow firebaseId to be null
+      name: map['name'] as String? ?? 'Unknown Event', // Fallback to 'Unknown Event'
+      date: (map['date'] is Timestamp)
+          ? (map['date'] as Timestamp).toDate().toIso8601String() // Convert Timestamp to String
+          : (map['date'] as String? ?? ''), // Handle null for date
+      location: map['location'] as String? ?? 'No Location', // Fallback to 'No Location'
+      description: map['description'] as String? ?? 'No Description', // Fallback to 'No Description'
+      createdBy: map['createdBy'] as String? ?? 'Unknown Creator', // Fallback for createdBy
+      status: map['status'] as String? ?? 'Unknown Status', // Fallback for status
+      category: map['category'] as String? ?? 'Uncategorized', // Fallback for category
       syncStatus: map['syncStatus'] == 'synced',
-      createdAt: map['createdAt'] as String, // Parse createdAt from the map
+      createdAt: (map['createdAt'] is Timestamp)
+          ? (map['createdAt'] as Timestamp).toDate().toIso8601String() // Handle Timestamp
+          : (map['createdAt'] as String? ?? ''), // Handle null for createdAt
     );
   }
+
+
 }

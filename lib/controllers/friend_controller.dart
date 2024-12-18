@@ -28,6 +28,15 @@ class FriendController with ChangeNotifier {
       return [];
     }
   }
+  
+  Stream<int> getUpcomingEventsCount(String friendId) {
+    return FirebaseFirestore.instance
+        .collection('Events')
+        .where('createdBy', isEqualTo: friendId)
+        .where('date', isGreaterThan: Timestamp.now())
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
 
   // Fetch friends for the logged-in user by checking users with isOwner=false
   Future<void> fetchFriends() async {
