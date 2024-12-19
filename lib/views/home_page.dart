@@ -84,83 +84,77 @@ class _HomePageState extends State<HomePage> {
           .collection('Users')
           .doc(userId)
           .get();
+
       if (userDoc.exists) {
         List<dynamic> friendIds = userDoc.data()?['friends'] ?? [];
+
+        List<Friend> friends = [];
+        for (String friendId in friendIds) {
+          var friendDoc = await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(friendId)
+              .get();
+
+          if (friendDoc.exists) {
+            var friendData = friendDoc.data();
+            friends.add(Friend(
+              id: friendId,
+              name: friendData?['name'] ?? 'Unknown',
+              profilePicture: friendData?['profilePicture'] ?? '',
+              phone: friendData?['phone'] ?? '',
+              upcomingEventsCount: 0, // Can update dynamically later
+            ));
+          }
+        }
+
         setState(() {
-          _friendsList = friendIds
-              .map((id) => Friend(
-                    id: id,
-                    name: 'Loading...',
-                    // Placeholder for name
-                    profilePicture: '',
-                    phone: '',
-                    upcomingEventsCount:
-                        0, // Event count handled by StreamBuilder
-                  ))
-              .toList();
+          _friendsList = friends;
         });
       }
     }
   }
 
+
   void _addFriend() async {
-    TextEditingController emailController = TextEditingController();
-    String friendEmail = '';
+    TextEditingController phoneController = TextEditingController();
+    String friendPhone = '';
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Add Friend by Email"),
+        title: Text("Add Friend by Phone"),
         content: TextField(
-          controller: emailController,
-          decoration: InputDecoration(labelText: 'Friend\'s Email'),
-          keyboardType: TextInputType.emailAddress,
-          onChanged: (value) => friendEmail = value,
+          controller: phoneController,
+          decoration: InputDecoration(labelText: 'Friend\'s Phone Number'),
+          keyboardType: TextInputType.phone,
+          onChanged: (value) => friendPhone = value,
         ),
         actions: [
           TextButton(
             onPressed: () async {
-              if (friendEmail.isNotEmpty) {
+              if (friendPhone.isNotEmpty) {
                 try {
-                  // Query Firestore to find the friend by email
-                  var friendDoc = await FirebaseFirestore.instance
-                      .collection('Users')
-                      .where('email', isEqualTo: friendEmail)
-                      .get();
+                  // Use FriendController to add friend by phone
+                  FriendController friendController = FriendController();
+                  await friendController.addFriendByPhone(friendPhone);
 
-                  if (friendDoc.docs.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("No user found with that email")),
-                    );
-                  } else {
-                    var friendData = friendDoc.docs.first.data();
-                    String friendId = friendData['uid'];
-
-                    // Add friend's UID to the current user's `friends` array
-                    String userId = FirebaseAuth.instance.currentUser!.uid;
-                    await FirebaseFirestore.instance
-                        .collection('Users')
-                        .doc(userId)
-                        .update({
-                      'friends': FieldValue.arrayUnion([friendId]),
-                    });
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content:
-                              Text("${friendData['name']} added as a friend.")),
-                    );
-
-                    // Reload the friends list
-                    _loadFriends();
-                    Navigator.pop(context); // Close the dialog
-                  }
-                } catch (e) {
-                  print("Error adding friend: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Failed to add friend.")),
+                    SnackBar(content: Text("Friend added successfully.")),
+                  );
+
+                  Navigator.pop(context); // Close the dialog
+
+                  // Reload friends to update the list dynamically
+                  await _loadFriends();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
                   );
                 }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Please enter a valid phone number")),
+                );
               }
             },
             child: Text("Add Friend"),
@@ -173,6 +167,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
 
   // Search functionality for friends
   // void _searchFriends(String query) {
@@ -381,140 +376,73 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('Users')
-                  .doc(FirebaseAuth.instance.currentUser!.uid)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || !snapshot.data!.exists) {
-                  return Center(child: Text("No friends available"));
-                }
+            child: _friendsList.isEmpty
+                ? Center(child: Text("No friends found."))
+                : ListView.builder(
+              itemCount: _friendsList.length,
+              itemBuilder: (context, index) {
+                var friend = _friendsList[index];
+                return Card(
+                  elevation: 5,
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.all(10),
+                    leading: CircleAvatar(
+                      radius: 30,
+                      backgroundImage: NetworkImage(
+                          friend.profilePicture.isNotEmpty
+                              ? friend.profilePicture
+                              : _profileURL), // Use default profile picture if none
+                    ),
+                    title: Text(
+                      friend.name,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    subtitle: Text(
+                      friend.phone.isNotEmpty ? friend.phone : "N/A",
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    trailing: StreamBuilder<int>(
+                      stream: friendController.getUpcomingEventsCount(friend.id),
+                      builder: (context, eventSnapshot) {
+                        if (eventSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Text("Loading...");
+                        }
+                        int eventCount = eventSnapshot.data ?? 0;
+                        return Text(
+                          "Upcoming events: $eventCount",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      },
+                    ),
+                    onTap: () async {
+                      var events = await FirestoreService()
+                          .getUpcomingEventsForFriend(friend.id);
 
-                var data = snapshot.data!.data() as Map<String, dynamic>;
-                List<dynamic> friendIds = data['friends'] ?? [];
-
-                // Fetch friends only once
-                if (!_friendsLoaded && friendIds.isNotEmpty) {
-                  _friendsLoaded = true; // Set flag
-                  _loadFriends();
-                }
-
-                return _friendsList.isEmpty
-                    ? Center(child: Text("No friends found."))
-                    : ListView.builder(
-                        itemCount: _friendsList.length,
-                        itemBuilder: (context, index) {
-                          var friend = _friendsList[index];
-                          return FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance
-                                .collection('Users')
-                                .doc(friend.id)
-                                .get(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return Card(
-                                  elevation: 5,
-                                  margin: EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 10),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: ListTile(
-                                    contentPadding: EdgeInsets.all(10),
-                                    title: Text(
-                                      "Loading...",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    subtitle: Text("Loading..."),
-                                    trailing: CircularProgressIndicator(),
-                                  ),
-                                );
-                              }
-
-                              if (!snapshot.hasData || !snapshot.data!.exists) {
-                                return ListTile(
-                                  title: Text("No friend data available."),
-                                );
-                              }
-
-                              var friendData =
-                                  snapshot.data!.data() as Map<String, dynamic>;
-
-                              return Card(
-                                elevation: 5,
-                                margin: EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: ListTile(
-                                  contentPadding: EdgeInsets.all(10),
-                                  leading: CircleAvatar(
-                                    radius: 30,
-                                    backgroundImage: NetworkImage(_profileURL),
-                                  ),
-                                  title: Text(
-                                    friendData['name'] ?? "Unknown",
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18),
-                                  ),
-                                  subtitle: Text(
-                                    friendData['phone'] ?? 'N/A',
-                                    style: TextStyle(color: Colors.grey[700]),
-                                  ),
-                                  trailing: StreamBuilder<int>(
-                                    stream: friendController
-                                        .getUpcomingEventsCount(friend.id),
-                                    builder: (context, eventSnapshot) {
-                                      if (eventSnapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return Text("Loading...");
-                                      }
-                                      int eventCount = eventSnapshot.data ?? 0;
-                                      return Text(
-                                        "Upcoming events: $eventCount",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  onTap: () async {
-                                    print(
-                                        "Fetching upcoming events for friend ID: ${friend.id}");
-
-                                    var events = await FirestoreService()
-                                        .getUpcomingEventsForFriend(friend.id);
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            FriendEventListPage(
-                                          events: events,
-                                          friendName: friendData['name'],
-                                          friendId: friend.id,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              );
-                            },
-                          );
-                        },
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FriendEventListPage(
+                            events: events,
+                            friendName: friend.name,
+                            friendId: friend.id,
+                          ),
+                        ),
                       );
+                    },
+                  ),
+                );
               },
             ),
           )
+
         ],
       ),
     );

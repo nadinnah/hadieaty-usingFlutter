@@ -14,7 +14,7 @@ class UserController {
       print("Error inserting user: $e");
       throw Exception("Failed to add user to local database");
     }
-  }
+  }//NOT USED
 
   // Fetch user data by userId
   Future<Map<String, dynamic>> getUserData(int userId) async {
@@ -22,9 +22,8 @@ class UserController {
     return userData;
   }
 
-  // Fetch created events by userId
   Future<List<Event>> getCreatedEvents(int userId) async {
-    var eventsData = await _localDatabase.getEventsByUserId(userId as String);
+    var eventsData = await _localDatabase.getEventsByUserId(userId.toString()); // Ensure it's a string if SQLite expects it
     return eventsData.map((e) => Event.fromMap(e)).toList();
   }
 

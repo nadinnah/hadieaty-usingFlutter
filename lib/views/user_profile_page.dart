@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:hadieaty/controllers/user_controller.dart';
 import 'package:hadieaty/models/event.dart';
@@ -49,6 +51,27 @@ class _UserProfilePageState extends State<UserProfilePage> {
       });
     }
   }
+
+  void updateFCMToken() async {
+    try {
+      String? token = await FirebaseMessaging.instance.getToken();
+      User? currentUser = FirebaseAuth.instance.currentUser;
+
+      if (token != null && currentUser != null) {
+        String currentUserId = currentUser.uid; // Get the current user's ID
+
+        await FirebaseFirestore.instance.collection('Users').doc(currentUserId).update({
+          'fcmToken': token,
+        });
+        print('FCM token updated for user: $currentUserId');
+      } else {
+        print('Token or current user is null.');
+      }
+    } catch (e) {
+      print('Error updating FCM token: $e');
+    }
+  }
+
 
   Future<void> _fetchLoggedInUser() async {
     // Example: Using FirebaseAuth to get the current user's UID

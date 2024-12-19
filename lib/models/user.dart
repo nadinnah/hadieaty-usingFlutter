@@ -6,6 +6,7 @@ class User {
   String name;
   String email;
   bool notifications;
+  String? fcmToken; // Firebase Cloud Messaging Token
   List<Event> createdEvents;
   List<Gift> pledgedGifts;
 
@@ -14,6 +15,7 @@ class User {
     required this.name,
     required this.email,
     this.notifications = true,
+    this.fcmToken,
     this.createdEvents = const [],
     this.pledgedGifts = const [],
   });
@@ -25,6 +27,7 @@ class User {
       'name': name,
       'email': email,
       'notifications': notifications ? 1 : 0, // Store as int in SQLite
+      'fcmToken': fcmToken,
     };
   }
 
@@ -35,37 +38,7 @@ class User {
       name: map['name'],
       email: map['email'],
       notifications: map['notifications'] == 1, // Convert int to bool
+      fcmToken: map['fcmToken'],
     );
   }
-
-
-  // Method to update personal information
-  void updateInfo({String? name, String? email, bool? notifications}) {
-    if (name != null) {
-      this.name = name;
-    }
-    if (email != null) {
-      this.email = email;
-    }
-    if (notifications != null) {
-      this.notifications = notifications;
-    }
-  }
-
-  // Method to add an event
-  void addEvent(Event event) {
-    createdEvents.add(event);
-  }
-
-  // Method to add a pledged gift
-  void addPledgedGift(Gift gift) {
-    pledgedGifts.add(gift);
-  }
-
-  // Method to remove a pledged gift
-  void removePledgedGift(String giftName) {
-    pledgedGifts.removeWhere((gift) => gift.name == giftName);
-  }
-
-
 }

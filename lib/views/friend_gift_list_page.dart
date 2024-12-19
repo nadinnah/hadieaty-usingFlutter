@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../firebase_api.dart';
 import '../models/gift.dart';
 import '../services/sqlite_service.dart';
 
@@ -42,10 +43,30 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
         'pledgedBy': currentUserId,
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("${gift.name} has been pledged!")),
-      );
+      // Fetch gift owner's details
+      final ownerDoc = await FirebaseFirestore.instance.collection('Users').doc(gift.createdBy).get();
+      if (ownerDoc.exists) {
+        final ownerData = ownerDoc.data();
+        String ownerName = ownerData?['name'] ?? "Gift Owner"; // Owner's name
+        String giftName = gift.name.isNotEmpty ? gift.name : "a gift";
+
+        // Fetch current user's name
+        final currentUserDoc = await FirebaseFirestore.instance.collection('Users').doc(currentUserId).get();
+        String currentUserName = currentUserDoc.data()?['name'] ?? "Someone"; // Current user's name
+
+        // Send notification to the owner
+        FirebaseApi().sendNotificationToUser(
+          gift.createdBy, // Owner's user ID
+          "Gift Pledged!",
+          "$currentUserName pledged your gift: $giftName!",
+        );
+
+        print("Notification sent to $ownerName about gift: $giftName.");
+      } else {
+        print("Owner document does not exist for userId: ${gift.createdBy}");
+      }
     } catch (e) {
+      print("Error pledging gift: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error pledging gift: $e")),
       );
@@ -53,6 +74,7 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
       setState(() => _isLoading = false);
     }
   }
+
 
   // Purchase a gift
   Future<void> _purchaseGift(Gift gift) async {
@@ -111,14 +133,25 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
             return const Center(child: Text("No gifts available"));
           }
 
-          // Convert Firestore documents to Gift objects
           List<Gift> gifts = snapshot.data!.docs.map((doc) {
             var data = doc.data() as Map<String, dynamic>;
-            return Gift.fromMap({
-              ...data,
-              'firebaseId': doc.id, // Ensure firebaseId is set
-            });
+
+            return Gift(
+              id: null,
+              firebaseId: doc.id,
+              name: data['name'] ?? 'Unknown',
+              description: data['description'],
+              category: data['category'],
+              price: (data['price'] as num?)?.toDouble(),
+              imageUrl: data['imageUrl'],
+              status: data['status'] ?? 'available',
+              eventId: widget.firebaseEventId,
+              syncStatus: 'Synced',
+              pledgedBy: data['pledgedBy'],
+              createdBy: data['createdBy'] ?? '',
+            );
           }).toList();
+
 
           return ListView.builder(
             itemCount: gifts.length,

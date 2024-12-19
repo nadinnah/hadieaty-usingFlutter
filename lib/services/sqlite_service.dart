@@ -23,7 +23,7 @@ class LocalDatabase {
 
   Future<void> deleteOldDatabase() async {
     String mypath = await getDatabasesPath();
-    String path = join(mypath, 'myDataBase1.db');
+    String path = join(mypath, 'myDataBase3.db');
 
     // Delete the database file
     if (await databaseExists(path)) {
@@ -54,17 +54,18 @@ class LocalDatabase {
     Database mydb = await openDatabase(path, version: Version, onCreate: (db, Version) async {
       // Users Table
       await db.execute('''
-      CREATE TABLE IF NOT EXISTS Users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        preferences TEXT,
-        password TEXT NOT NULL,
-        isOwner INTEGER NOT NULL DEFAULT 0,  -- 0 for false, 1 for true
-        profilePic TEXT,
-        number INTEGER NOT NULL
-      )
-    ''');
+          CREATE TABLE IF NOT EXISTS Users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          preferences TEXT,
+          password TEXT NOT NULL,
+          isOwner INTEGER NOT NULL DEFAULT 0,  -- 0 for false, 1 for true
+          profilePic TEXT,
+          number INTEGER NOT NULL
+      );
+      ''');
+
 
       // Events Table
       await db.execute(''' 
@@ -97,8 +98,9 @@ class LocalDatabase {
           status TEXT NOT NULL, -- Status like "Available", "Pledged", "Purchased"
           eventId TEXT NOT NULL, -- Firestore Event ID
           syncStatus TEXT NOT NULL, -- "Synced" or "Unsynced"
-          pledgedBy TEXT -- Firestore user ID of the pledger
-      );
+          pledgedBy TEXT, -- Firestore user ID of the pledger
+          createdBy TEXT -- New column for the creator's Firestore ID
+        );
       ''');
 
       print("Database initialized.");
@@ -119,13 +121,15 @@ class LocalDatabase {
   }
 
 
-
-  // Insert user
   Future<int> insertUser(Map<String, dynamic> userData) async {
     final db = await MyDataBase;
-    return await db!.insert('Users', userData);
+    return await db!.insert(
+      'Users',
+      {
+        ...userData,
+      },
+    );
   }
-
 
 
   Future<int> insertEventWithUserId(Map<String, dynamic> eventData) async {
@@ -214,23 +218,26 @@ class LocalDatabase {
   }//USED
 
 
-  // Fetch all gifts for a specific event
   Future<List<Map<String, dynamic>>> getGiftsByEventId(String firebaseEventId) async {
-    final db = await MyDataBase; // Your SQLite database instance
+    final db = await MyDataBase;
     return await db!.query(
-      'gifts', // Your table name
-      where: 'eventId = ?', // Match Firestore eventId column
+      'Gifts',
+      where: 'eventId = ?',
       whereArgs: [firebaseEventId],
     );
   }
 
 
 
-// Insert a new gift
   Future<int> insertGift(Gift gift) async {
     final db = await MyDataBase;
-    return await db!.insert('Gifts', gift.toMap());
-  }//USED
+    return await db!.insert('Gifts', {
+      ...gift.toMap(),
+      'createdBy': gift.createdBy, // Include creator ID
+      'pledgedBy': gift.pledgedBy ?? '', // Include pledger ID
+    });
+  }
+
 
   Future<int> updateTheGift(int giftId, Gift gift) async {
     final db =
@@ -256,11 +263,12 @@ class LocalDatabase {
 // Fetch pledged gifts for a specific user (based on userId)
   Future<List<Map<String, dynamic>>> getPledgedGiftsByUserId(int userId) async {
     final db = await MyDataBase;
-    return await db!.query('Gifts',
-        where:
-            'status = ? AND eventId IN (SELECT id FROM Events WHERE userId = ?)',
-        whereArgs: ['pledged', userId]);
-  }//USED
+    return await db!.rawQuery(
+      'SELECT * FROM Gifts WHERE status = ? AND eventId IN (SELECT id FROM Events WHERE createdBy = ?)',
+      ['pledged', userId],
+    );
+  }
+//USED
 
 //USER
 

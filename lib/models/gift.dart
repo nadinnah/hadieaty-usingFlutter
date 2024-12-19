@@ -10,6 +10,7 @@ class Gift {
   String eventId; // Firestore event ID
   String syncStatus; // "Synced", "Unsynced"
   String? pledgedBy; // Firestore user ID of the pledger
+  String createdBy; // Firestore user ID of the creator
 
   Gift({
     this.id,
@@ -23,6 +24,7 @@ class Gift {
     required this.eventId,
     required this.syncStatus,
     this.pledgedBy,
+    required this.createdBy,
   });
 
   // Factory method: Convert from a map to a Gift object
@@ -39,6 +41,7 @@ class Gift {
       eventId: map['eventId'] ?? '',
       syncStatus: map['syncStatus'] ?? 'Unsynced',
       pledgedBy: map['pledgedBy'], // Firestore user ID of the pledger
+      createdBy: map['createdBy'] ?? '', // Firestore user ID of the creator
     );
   }
 
@@ -56,6 +59,7 @@ class Gift {
       'eventId': eventId,
       'syncStatus': syncStatus,
       'pledgedBy': pledgedBy,
+      'createdBy': createdBy,
     };
   }
 }

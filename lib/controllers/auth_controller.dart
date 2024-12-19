@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hadieaty/services/sqlite_service.dart';
 
 class AuthenticationController {
@@ -7,26 +8,39 @@ class AuthenticationController {
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
   LocalDatabase _localDatabase = LocalDatabase();
 
-  Sign_in(emailAddress, password) async{
+  Sign_in(emailAddress, password) async {
     try {
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: emailAddress,
-          password: password
+        email: emailAddress,
+        password: password,
       );
+
       if (credential.user != null) {
         String userId = credential.user!.uid;
-        await _firestore.collection('Users').doc(userId).update({
-          'isOwner': true,  // Set the `isOwner` field to true
-        });
-        await _localDatabase.updateUserIsOwner(emailAddress,1);
 
-          // Fetch user data from Firestore
-          DocumentSnapshot userDoc = await _firestore.collection('Users').doc(
-              userId).get();
+        // Update `isOwner` in Firestore
+        await _firestore.collection('Users').doc(userId).update({
+          'isOwner': true,
+        });
+
+        // Update `isOwner` in local SQLite database
+        await _localDatabase.updateUserIsOwner(emailAddress, 1);
+
+        // Fetch and update FCM token
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
+          await _firestore.collection('Users').doc(userId).update({
+            'fcmToken': fcmToken,
+          });
+          print('FCM token updated for user: $userId');
+        } else {
+          print('Failed to retrieve FCM token.');
+        }
+
+
 
         return true;
-
-        }
+      }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         print('No user found for that email.');
@@ -37,19 +51,23 @@ class AuthenticationController {
     }
   }
 
-  Sign_up(emailAddress,password, String name, String phone) async{
+  Sign_up(emailAddress, password, String name, String phone) async {
     try {
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailAddress,
         password: password,
       );
 
+      String? fcmToken = await FirebaseMessaging.instance.getToken();
+
+      // Create a new user document in Firestore
       await _firestore.collection('Users').doc(credential.user!.uid).set({
         'name': name,
         'email': emailAddress,
         'phone': phone,
         'isOwner': false,
         'uid': credential.user!.uid,
+        'fcmToken': fcmToken ?? '', // Initialize with FCM token if available
       });
 
       // Add user to local SQLite database
@@ -62,6 +80,8 @@ class AuthenticationController {
         'profilePic': '', // Optional field
         'number': int.parse(phone),
       });
+
+      print('User signed up successfully with FCM token: $fcmToken');
       return true;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
@@ -75,6 +95,7 @@ class AuthenticationController {
       return false;
     }
   }
+
 
   Sign_out() async {
         await FirebaseAuth.instance.signOut();

@@ -159,9 +159,10 @@ class FirestoreService {
   }
 
 
-
   Future<void> addGiftToEvent(String eventId, Gift gift) async {
     try {
+      String currentUserId = FirebaseAuth.instance.currentUser!.uid; // Get the current user's ID
+
       await _db
           .collection('Events')
           .doc(eventId)
@@ -172,6 +173,11 @@ class FirestoreService {
         'price': gift.price ?? 0.0,
         'category': gift.category ?? '',
         'imageUrl': gift.imageUrl ?? '',
+        'status': gift.status,
+        'eventId': gift.eventId,
+        'syncStatus': gift.syncStatus,
+        'pledgedBy': gift.pledgedBy ?? '', // Add pledgedBy field
+        'createdBy': currentUserId, // Add createdBy field
       });
       print("Gift added successfully to Firestore.");
     } catch (e) {
@@ -187,13 +193,23 @@ class FirestoreService {
     return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
   }
 
-  // Pledge a gift for an event
   Future<void> pledgeGift(String eventId, String giftId) async {
-    CollectionReference giftsRef = _db.collection('Users').doc(userId).collection('events').doc(eventId).collection('gifts');
-    await giftsRef.doc(giftId).update({
-      'status': 'pledged', // Update the gift status to pledged
-      'pledgedBy': userId, // Store the user ID of the person pledging
-    });
+    try {
+      String currentUserId = FirebaseAuth.instance.currentUser!.uid; // Get the current user's ID
+
+      await _db
+          .collection('Events')
+          .doc(eventId)
+          .collection('Gifts')
+          .doc(giftId)
+          .update({
+        'status': 'Pledged', // Update status to Pledged
+        'pledgedBy': currentUserId, // Update pledgedBy to the current user's ID
+      });
+      print("Gift pledged successfully.");
+    } catch (e) {
+      print("Error pledging gift: $e");
+    }
   }
 
   Future<List<Event>> getEventsForFriend(String friendId) async {

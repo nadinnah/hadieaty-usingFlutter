@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../controllers/gift_controller.dart';
 import '../models/gift.dart';
@@ -57,8 +58,9 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
     });
   }
 
-  // Add a new gift
   void _addGift() async {
+    String currentUserId = FirebaseAuth.instance.currentUser!.uid; // Get the current user's ID
+
     Gift? newGift = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -72,14 +74,15 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
             syncStatus: "Unsynced",
             description: '',
             imageUrl: '',
+            createdBy: currentUserId, // Set createdBy to the current user's ID
           ),
         ),
       ),
     );
 
     if (newGift != null) {
-      await _localDatabase.insertGift(newGift);
-      _loadGifts();
+      await _localDatabase.insertGift(newGift); // Save to SQLite
+      _loadGifts(); // Reload gifts
     }
   }
 
