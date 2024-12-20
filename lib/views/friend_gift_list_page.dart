@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import '../services/firebase_api.dart';
 import '../models/gift.dart';
 import '../services/sqlite_service.dart';
+import 'package:provider/provider.dart';
+import '../services/shared_preference.dart';
 
 class FriendGiftListPage extends StatefulWidget {
   final String eventName;
-  final String firebaseEventId; // Firestore Event ID
-  final String friendId; // Friend's User ID
+  final String firebaseEventId;
+  final String friendId;
 
   FriendGiftListPage({
     required this.eventName,
@@ -24,10 +26,8 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
   final LocalDatabase _localDatabase = LocalDatabase();
   bool _isLoading = false;
 
-  // Get the logged-in user's ID
   String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
 
-  // Pledge a gift
   Future<void> _pledgeGift(Gift gift) async {
     try {
       setState(() => _isLoading = true);
@@ -43,30 +43,29 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
         'pledgedBy': currentUserId,
       });
 
-      // Fetch gift owner's details
-      final ownerDoc = await FirebaseFirestore.instance.collection('Users').doc(gift.createdBy).get();
+      // Notify gift owner
+      final ownerDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(gift.createdBy)
+          .get();
       if (ownerDoc.exists) {
         final ownerData = ownerDoc.data();
-        String ownerName = ownerData?['name'] ?? "Gift Owner"; // Owner's name
+        String ownerName = ownerData?['name'] ?? "Gift Owner";
         String giftName = gift.name.isNotEmpty ? gift.name : "a gift";
 
-        // Fetch current user's name
-        final currentUserDoc = await FirebaseFirestore.instance.collection('Users').doc(currentUserId).get();
-        String currentUserName = currentUserDoc.data()?['name'] ?? "Someone"; // Current user's name
+        final currentUserDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUserId)
+            .get();
+        String currentUserName = currentUserDoc.data()?['name'] ?? "Someone";
 
-        // Send notification to the owner
         FirebaseApi().sendNotificationToUser(
-          gift.createdBy, // Owner's user ID
+          gift.createdBy,
           "Gift Pledged!",
           "$currentUserName pledged your gift: $giftName!",
         );
-
-        print("Notification sent to $ownerName about gift: $giftName.");
-      } else {
-        print("Owner document does not exist for userId: ${gift.createdBy}");
       }
     } catch (e) {
-      print("Error pledging gift: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error pledging gift: $e")),
       );
@@ -75,8 +74,6 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
     }
   }
 
-
-  // Purchase a gift
   Future<void> _purchaseGift(Gift gift) async {
     try {
       setState(() => _isLoading = true);
@@ -108,15 +105,57 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
     }
   }
 
+  Future<void> _unpledgeGift(Gift gift) async {
+    try {
+      setState(() => _isLoading = true);
+
+      if (gift.pledgedBy != currentUserId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You can only unpledge gifts you pledged.")),
+        );
+        return;
+      }
+
+      var giftDocRef = FirebaseFirestore.instance
+          .collection('Events')
+          .doc(widget.firebaseEventId)
+          .collection('gifts')
+          .doc(gift.firebaseId);
+
+      await giftDocRef.update({
+        'status': 'Available',
+        'pledgedBy': null,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("${gift.name} has been unpledged!")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error unpledging gift: $e")),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    var preferences = Provider.of<PreferencesService>(context);
+    var isDarkMode = preferences.isDarkMode;
+
     return Scaffold(
-      backgroundColor: const Color(0xffefefef),
+      backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
-        backgroundColor: const Color(0xffefefef),
+        iconTheme: IconThemeData(color: preferences.isDarkMode ? Colors.white : Colors.black),
+        backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
         title: Text(
           "${widget.eventName} Gifts",
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -130,7 +169,12 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No gifts available"));
+            return Center(
+              child: Text(
+                "No gifts available",
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              ),
+            );
           }
 
           List<Gift> gifts = snapshot.data!.docs.map((doc) {
@@ -152,53 +196,63 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
             );
           }).toList();
 
-
           return ListView.builder(
             itemCount: gifts.length,
             itemBuilder: (context, index) {
               Gift gift = gifts[index];
 
               return Card(
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                  color: gift.status == "Pledged"
-                      ? Colors.orange[100]
-                      : gift.status == "Purchased"
-                      ? Colors.green[100]
-                      : Colors.blue[100],
-                  child: ListTile(
-                    title: Text(
-                      gift.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      "Category: ${gift.category ?? 'N/A'}\n"
-                          "Price: \$${gift.price ?? 0.0}\n"
-                          "Status: ${gift.status}",
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Pledge Button (if gift is Available)
-                        if (gift.status == "available")
-                          ElevatedButton(
-                            onPressed: () => _pledgeGift(gift),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                            child: const Text("Pledge"),
-                          ),
-
-                        // Purchase Button (only visible if the user pledged the gift)
-                        if (gift.status == "Pledged" && gift.pledgedBy == currentUserId)
-                          ElevatedButton(
-                            onPressed: () => _purchaseGift(gift),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                            child: const Text("Purchase"),
-                          ),
-
-
-                      ],
+                elevation: 3,
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                color: gift.status == "Pledged"
+                    ? Colors.orange[100]
+                    : gift.status == "Purchased"
+                    ? Colors.green[100]
+                    : Colors.blue[100],
+                child: ListTile(
+                  title: Text(
+                    gift.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.black : Colors.black,
                     ),
                   ),
+                  subtitle: Text(
+                    "Category: ${gift.category ?? 'N/A'}\n"
+                        "Price: \$${gift.price ?? 0.0}\n"
+                        "Status: ${gift.status}",
+                    style: TextStyle(color: isDarkMode ? Colors.grey : Colors.black),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (gift.status == "available")
+                        ElevatedButton(
+                          onPressed: () => _pledgeGift(gift),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDarkMode ? Colors.blueGrey : Colors.blue,
+                          ),
+                          child: const Text("Pledge"),
+                        ),
+                      if (gift.status == "Pledged" && gift.pledgedBy == currentUserId)
+                        ElevatedButton(
+                          onPressed: () => _purchaseGift(gift),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDarkMode ? Colors.greenAccent : Colors.green,
+                          ),
+                          child: const Text("Purchase"),
+                        ),
+                      if (gift.status == "Pledged" && gift.pledgedBy == currentUserId)
+                        ElevatedButton(
+                          onPressed: () => _unpledgeGift(gift),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDarkMode ? Colors.redAccent : Colors.red,
+                          ),
+                          child: const Text("Unpledge"),
+                        ),
+                    ],
+                  ),
+                ),
               );
             },
           );

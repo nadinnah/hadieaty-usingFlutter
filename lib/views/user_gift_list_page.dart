@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../controllers/gift_controller.dart';
 import '../models/gift.dart';
 import '../services/sqlite_service.dart';
+import '../services/shared_preference.dart';
 import 'gift_details_page.dart';
 
 class UserGiftListPage extends StatefulWidget {
@@ -146,15 +148,32 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xffefefef),
-      appBar: AppBar(
+    var preferences = Provider.of<PreferencesService>(context);
+    var isDarkMode = preferences.isDarkMode;
 
-        backgroundColor: const Color(0xffefefef),
+    return Scaffold(
+      backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed:(){
+              setState(() {
+
+              });
+            },
+          ),
+        ],
+        backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
         title: Text(
           "${widget.eventName} Gifts",
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
       ),
       body: Column(
         children: [
@@ -166,16 +185,15 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
                 ElevatedButton(
                   onPressed: _addGift,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xff273331),
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    backgroundColor: isDarkMode ? Colors.grey : const Color(0xff273331),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text(
+                  child: Text(
                     "Add New Gift",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                    style: TextStyle(fontSize: 18, color: Colors.white ),
                   ),
                 ),
                 DropdownButton<String>(
@@ -188,7 +206,7 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
                     DropdownMenuItem(value: 'Status', child: Text('Sort by Status')),
                   ],
                   underline: Container(),
-                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                  style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white : Colors.black),
                 ),
               ],
             ),
@@ -203,19 +221,22 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   elevation: 3,
+                  color: isDarkMode ? const Color(0xff2a2a2a) : Colors.white,
                   child: ListTile(
                     leading: IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.green),
-                      onPressed: gift.status != "Pledged"
-                          ? () => _editGift(gift)
-                          : null, // Disable if pledged
+                      icon: Icon(Icons.edit, color: isDarkMode ? Colors.white : Colors.green),
+                      onPressed: gift.status != "Pledged" ? () => _editGift(gift) : null,
                     ),
                     title: Text(
                       gift.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                     subtitle: Text(
                       "Category: ${gift.category}\nPrice: \$${gift.price}\nStatus: ${gift.status}",
+                      style: TextStyle(color: isDarkMode ? Colors.grey : Colors.black),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -224,15 +245,14 @@ class _UserGiftListPageState extends State<UserGiftListPage> {
                           ElevatedButton(
                             onPressed: () => _publishGift(gift),
                             style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0x4C4CC1FF),
-                                foregroundColor: Colors.white),
+                              backgroundColor: isDarkMode ? Colors.grey : const Color(0xff4CC1FF),
+                              foregroundColor: Colors.white,
+                            ),
                             child: const Text("Publish"),
                           ),
                         IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: gift.status != "Pledged"
-                              ? () => _deleteGift(gift)
-                              : null, // Disable if pledged
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: gift.status != "Pledged" ? () => _deleteGift(gift) : null,
                         ),
                       ],
                     ),

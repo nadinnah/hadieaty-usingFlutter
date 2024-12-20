@@ -25,6 +25,7 @@ class _HomePageState extends State<HomePage> {
   final EventController _eventController = EventController();
   final LocalDatabase _localDatabase = LocalDatabase();
   List<Friend> _friendsList = [];
+  String _searchQuery = '';
   List<Event> _userEvents = [];
   String _userName = '';
   String _userEmail = '';
@@ -36,9 +37,14 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    getUserName();
     loadFriends();
     loadPhotoURLs();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    getUserName();
   }
 
   Future<void> loadPhotoURLs() async {
@@ -56,7 +62,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-
   Future<void> loadFriends() async {
     setState(() => _friendsLoaded = false);
     try {
@@ -73,14 +78,15 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _filterFriends() {
+    setState(() {
+      _friendsList = _friendsList.where((friend) {
+        return friend.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            friend.phone.toLowerCase().contains(_searchQuery.toLowerCase());
+      }).toList();
+    });
+  }
 
-
-  // Search functionality for friends
-  // void _searchFriends(String query) {
-  //   setState(() {
-  //     _friendsList = _controller.searchFriends(query);
-  //   });
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +149,10 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   'Welcome $_userName',
-                  style: TextStyle(fontSize: 17),
+                  style: TextStyle(
+                      fontSize: 17,
+                      color:
+                          preferences.isDarkMode ? Colors.white : Colors.black),
                 )
               ],
             ),
@@ -166,7 +175,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   child: const Text(
                     'Go to your profile',
-                    style: TextStyle(fontSize: 16, color: Color(0xFFD8D7D7)),
+                    style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
                 SizedBox(width: 16),
@@ -199,12 +208,22 @@ class _HomePageState extends State<HomePage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Search Friends',
-                prefixIcon: Icon(Icons.search),
+                labelStyle: TextStyle(color: preferences.isDarkMode ? Colors.white : Colors.black),
+                prefixIcon: Icon(Icons.search, color: preferences.isDarkMode ? Colors.white : Colors.black),
                 border: OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: preferences.isDarkMode ? Colors.white : Colors.black),
+                ),
               ),
-              // onChanged: //_searchFriends,
+              style: TextStyle(color: preferences.isDarkMode ? Colors.white : Colors.black),
+              onChanged: (query) {
+                setState(() {
+                  _searchQuery = query;
+                  _filterFriends(); // Filter friends based on the query
+                });
+              },
             ),
           ),
           Padding(
@@ -219,52 +238,73 @@ class _HomePageState extends State<HomePage> {
 
                     showDialog(
                       context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text("Add Friend by Phone"),
-                        content: TextField(
-                          controller: phoneController,
-                          decoration: InputDecoration(labelText: 'Friend\'s Phone Number'),
-                          keyboardType: TextInputType.phone,
-                          onChanged: (value) => friendPhone = value,
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () async {
-                              if (friendPhone.isNotEmpty) {
-                                try {
-                                  // Use FriendController to add friend by phone
-                                  FriendController friendController = FriendController();
-                                  await friendController.addFriendByPhone(friendPhone);
+                      builder: (context) {
+                        var isDarkMode = Provider.of<PreferencesService>(context).isDarkMode;
+                        return AlertDialog(
+                          backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
+                          title: Text(
+                            "Add Friend by Phone",
+                            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                          ),
+                          content: TextField(
+                            controller: phoneController,
+                            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                            decoration: InputDecoration(
+                              labelText: 'Friend\'s Phone Number',
+                              labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                              border: const OutlineInputBorder(),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
+                              ),
+                            ),
+                            keyboardType: TextInputType.phone,
+                            onChanged: (value) => friendPhone = value,
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () async {
+                                if (friendPhone.isNotEmpty) {
+                                  try {
+                                    // Use FriendController to add friend by phone
+                                    await friendController.addFriendByPhone(friendPhone);
 
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("Friend added successfully.")),
+                                    );
+
+                                    Navigator.pop(context); // Close the dialog
+
+                                    // Reload friends to update the list dynamically
+                                    await loadFriends();
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(e.toString())),
+                                    );
+                                  }
+                                } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text("Friend added successfully.")),
-                                  );
-
-                                  Navigator.pop(context); // Close the dialog
-
-                                  // Reload friends to update the list dynamically
-                                  await loadFriends();
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.toString())),
+                                    SnackBar(content: Text("Please enter a valid phone number")),
                                   );
                                 }
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Please enter a valid phone number")),
-                                );
-                              }
-                            },
-                            child: Text("Add Friend"),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text("Cancel"),
-                          ),
-                        ],
-                      ),
+                              },
+                              child: Text(
+                                "Add Friend",
+                                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(
+                                "Cancel",
+                                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     );
                   },
+
                   icon: Icon(
                     Icons.person_add,
                     size: 30,
@@ -302,12 +342,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.add, size: 30, color: Color(0xFFD8D7D7)),
+                        Icon(Icons.add, size: 30, color: Colors.white),
                         SizedBox(width: 5),
                         Text(
                           'Create new event/list',
                           style:
-                              TextStyle(fontSize: 20, color: Color(0xFFD8D7D7)),
+                              TextStyle(fontSize: 20, color: Colors.white),
                         ),
                       ],
                     ),
@@ -318,12 +358,13 @@ class _HomePageState extends State<HomePage> {
           ),
           Expanded(
             child: _friendsList.isEmpty
-                ? Center(child: Text("No friends found."))
+                ? Center(child: Text("No friends found.",style: TextStyle(color: preferences.isDarkMode ? Colors.white : Colors.black ),))
                 : ListView.builder(
                     itemCount: _friendsList.length,
                     itemBuilder: (context, index) {
                       var friend = _friendsList[index];
                       return Card(
+                        color: preferences.isDarkMode ? const Color(0xffcfcfcf) : Color(0xecfffffc),
                         elevation: 5,
                         margin:
                             EdgeInsets.symmetric(horizontal: 16, vertical: 10),

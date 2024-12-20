@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/gift.dart';
 import '../services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../services/shared_preference.dart';
 
 class PledgedGiftsPage extends StatefulWidget {
   @override
@@ -43,9 +45,18 @@ class _PledgedGiftsPageState extends State<PledgedGiftsPage> {
 
   @override
   Widget build(BuildContext context) {
+    var preferences = Provider.of<PreferencesService>(context);
+    var isDarkMode = preferences.isDarkMode;
+
     return Scaffold(
+      backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
-        title: const Text("My Pledged Gifts"),
+        backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
+        title: Text(
+          "My Pledged Gifts",
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+        ),
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -56,21 +67,33 @@ class _PledgedGiftsPageState extends State<PledgedGiftsPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _pledgedGifts.isEmpty
-          ? const Center(child: Text("You have not pledged any gifts."))
+          ? Center(
+        child: Text(
+          "You have not pledged any gifts.",
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+        ),
+      )
           : ListView.builder(
         itemCount: _pledgedGifts.length,
         itemBuilder: (context, index) {
           var gift = _pledgedGifts[index];
           return Card(
+            color: isDarkMode ? const Color(0xffcfcfcf) : Colors.white,
             margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             elevation: 3,
             child: ListTile(
               title: Text(
                 gift.name,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.black : Colors.black,
+                ),
               ),
               subtitle: Text(
-                "Category: ${gift.category ?? 'N/A'}\nPrice: \$${gift.price ?? 0.0}\nStatus: ${gift.status}",
+                "Category: ${gift.category ?? 'N/A'}\n"
+                    "Price: \$${gift.price ?? 0.0}\n"
+                    "Status: ${gift.status}",
+                style: TextStyle(color: isDarkMode ? Colors.black54 : Colors.black),
               ),
             ),
           );

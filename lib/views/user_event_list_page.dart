@@ -1,14 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:hadieaty/models/event.dart';
-import 'package:hadieaty/controllers/event_controller.dart';
 import 'package:hadieaty/views/user_gift_list_page.dart';
+import 'package:provider/provider.dart';
+import '../controllers/event_controller.dart';
+import '../models/event.dart';
+import '../services/shared_preference.dart';
 import 'event_details_page.dart';
-import 'package:intl/intl.dart';
 
 class UserEventListPage extends StatefulWidget {
-
   final List<Event>? events;
   final Function(List<Event>)? onEventsUpdated;
 
@@ -22,13 +20,12 @@ class UserEventListPage extends StatefulWidget {
 }
 
 class _UserEventListPageState extends State<UserEventListPage> {
-  final _formKey = GlobalKey<FormState>();
   final EventController eventController = EventController();
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
   late List<Event> eventsList = [];
   bool _isLoading = false;
-  String _searchQuery = "";
   String sortOption = 'Name';
+  late List<Event> filteredEventsList = [];
 
   @override
   void initState() {
@@ -45,6 +42,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
         i,
             (context, animation) => _buildEventTile(eventsList[i], animation, i),
       );
+
     }
 
     // Load events
@@ -80,14 +78,11 @@ class _UserEventListPageState extends State<UserEventListPage> {
     });
   }
 
-
-
   Future<void> publishEvent(Event event) async {
     try {
       await eventController.syncEventToFirebase(event);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("Event '${event.name}' published successfully!")),
+        SnackBar(content: Text("Event '${event.name}' published successfully!")),
       );
       await loadEvents();
     } catch (e) {
@@ -102,8 +97,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text("Delete Event"),
-        content:
-        Text("Are you sure you want to delete the event \"$eventName\"?"),
+        content: Text("Are you sure you want to delete the event \"$eventName\"?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -132,8 +126,6 @@ class _UserEventListPageState extends State<UserEventListPage> {
     }
   }
 
-
-
   void removeEventAnimated(int index) {
     if (index < 0 || index >= eventsList.length) return; // Check for valid index
     final removedEvent = eventsList.removeAt(index);
@@ -144,7 +136,8 @@ class _UserEventListPageState extends State<UserEventListPage> {
   }
 
   Widget _buildEventTile(Event event, Animation<double> animation, int index) {
-    if (index < 0 || index >= eventsList.length) return SizedBox.shrink(); // Prevent invalid access
+    var preferences = Provider.of<PreferencesService>(context);
+
     return SlideTransition(
       position: animation.drive(
         Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
@@ -153,6 +146,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
       child: Card(
         elevation: 3,
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        color: preferences.isDarkMode ? const Color(0xffcfcfcf) : Color(0xecfffffc),
         child: ListTile(
           onTap: () {
             Navigator.push(
@@ -166,7 +160,7 @@ class _UserEventListPageState extends State<UserEventListPage> {
             );
           },
           leading: IconButton(
-            icon: const Icon(Icons.edit, color: Colors.green),
+            icon: Icon(Icons.edit, color: Colors.green),
             onPressed: () async {
               bool? result = await Navigator.push(
                 context,
@@ -177,11 +171,15 @@ class _UserEventListPageState extends State<UserEventListPage> {
               if (result == true) await loadEvents();
             },
           ),
-          title: Text(event.name),
+          title: Text(
+            event.name,
+            style: TextStyle(color: Colors.black),
+          ),
           subtitle: Text(
             "Location: ${event.location}\n"
                 "Status: ${event.status}\n"
                 "Date: ${event.date}",
+            style: TextStyle(color: Colors.black),
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -190,13 +188,15 @@ class _UserEventListPageState extends State<UserEventListPage> {
                 ElevatedButton(
                   onPressed: () => publishEvent(event),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0x4C4CC1FF),
+                    backgroundColor: preferences.isDarkMode
+                        ? Colors.grey
+                        : Color(0xff273331),
                     foregroundColor: Colors.white,
                   ),
                   child: const Text("Publish"),
                 ),
               IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
+                icon: Icon(Icons.delete, color: Colors.red),
                 onPressed: () async {
                   bool? confirm = await confirmDeleteEvent(event.name);
                   if (confirm == true) {
@@ -212,40 +212,27 @@ class _UserEventListPageState extends State<UserEventListPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
+    var preferences = Provider.of<PreferencesService>(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xffefefef),
+      backgroundColor: preferences.isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
-        backgroundColor: const Color(0xffefefef),
-        title: const Text(
-          'My Events',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        backgroundColor: preferences.isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
+        title: Text(
+          'Your Events',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: preferences.isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
+        iconTheme: IconThemeData(color: preferences.isDarkMode ? Colors.white : Colors.black),
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: const InputDecoration(
-                labelText: 'Search Events',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (query) {
-                setState(() {
-                  _searchQuery = query;
-                  eventsList = eventsList
-                      .where((event) => event.name
-                      .toLowerCase()
-                      .contains(query.toLowerCase()))
-                      .toList();
-                });
-              },
-            ),
-          ),
+          SizedBox(height: 10,),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
@@ -255,9 +242,10 @@ class _UserEventListPageState extends State<UserEventListPage> {
                   onPressed: addEvent,
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    backgroundColor: const Color(0xff273331),
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                    backgroundColor: preferences.isDarkMode
+                        ? Colors.grey
+                        : Color(0xff273331),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -272,13 +260,11 @@ class _UserEventListPageState extends State<UserEventListPage> {
                   onChanged: (value) => sortEvents(value!),
                   items: [
                     DropdownMenuItem(value: 'Name', child: Text('Sort by Name')),
-                    DropdownMenuItem(
-                        value: 'Category', child: Text('Sort by Category')),
-                    DropdownMenuItem(
-                        value: 'Status', child: Text('Sort by Status')),
+                    DropdownMenuItem(value: 'Category', child: Text('Sort by Category')),
+                    DropdownMenuItem(value: 'Status', child: Text('Sort by Status')),
                   ],
                   underline: Container(),
-                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -287,8 +273,13 @@ class _UserEventListPageState extends State<UserEventListPage> {
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else if (eventsList.isEmpty)
-            const Center(
-              child: Text("No events found."),
+            Expanded(
+              child: Center(
+                child: Text(
+                  "You have not created events.",
+                  style: TextStyle(color: preferences.isDarkMode ? Colors.white : Colors.black),
+                ),
+              ),
             )
           else
             Expanded(
@@ -304,5 +295,4 @@ class _UserEventListPageState extends State<UserEventListPage> {
       ),
     );
   }
-
 }

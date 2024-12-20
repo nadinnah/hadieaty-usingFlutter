@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../controllers/event_controller.dart';
 import '../models/event.dart';
+import 'package:provider/provider.dart';
+import '../services/shared_preference.dart';
 
 class AddEventPage extends StatelessWidget {
   final Event? event; // Nullable event for editing
@@ -13,6 +15,8 @@ class AddEventPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final EventController _controller = EventController();
     final _formKey = GlobalKey<FormState>();
+    final preferences = Provider.of<PreferencesService>(context);
+    final isDarkMode = preferences.isDarkMode;
 
     // TextEditingControllers for form fields
     final TextEditingController nameController = TextEditingController();
@@ -36,13 +40,18 @@ class AddEventPage extends StatelessWidget {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xffefefef),
+      backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
-        backgroundColor: const Color(0xffefefef),
+        backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
         title: Text(
           event == null ? 'Add New Event' : 'Edit Event',
-          style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
       ),
       body: Column(
         children: [
@@ -54,65 +63,67 @@ class AddEventPage extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      // Event Name
                       TextFormField(
                         controller: nameController,
                         decoration: InputDecoration(
-                          icon: const Icon(Icons.event),
+                          icon: Icon(Icons.event, color: isDarkMode ? Colors.white : Colors.black),
                           hintText: 'Event Name',
+                          hintStyle: TextStyle(color: Colors.black),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
                           fillColor: Colors.grey[50],
                           filled: true,
                         ),
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Event name is required' : null,
+                        style: TextStyle(color: Colors.black),
+                        validator: (value) => value == null || value.isEmpty ? 'Event name is required' : null,
                       ),
                       const SizedBox(height: 10),
-
-                      // Event Description
                       TextFormField(
                         controller: descriptionController,
                         decoration: InputDecoration(
-                          icon: const Icon(Icons.description),
+                          icon: Icon(Icons.description, color: isDarkMode ? Colors.white : Colors.black),
                           hintText: 'Description',
+                          hintStyle: TextStyle(color: Colors.black),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
                           fillColor: Colors.grey[50],
                           filled: true,
                         ),
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Description is required' : null,
+                        style: TextStyle(color: Colors.black),
+                        validator: (value) => value == null || value.isEmpty ? 'Description is required' : null,
                       ),
                       const SizedBox(height: 10),
-
-                      // Event Date (with DatePicker)
                       TextFormField(
                         controller: dateController,
                         readOnly: true,
                         decoration: InputDecoration(
-                          icon: const Icon(Icons.calendar_today),
+                          icon: Icon(Icons.calendar_today, color: isDarkMode ? Colors.white : Colors.black),
                           hintText: 'Select a date',
+                          hintStyle: TextStyle(color: Colors.black),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
-                          fillColor: Colors.grey[50],
+                          fillColor:Colors.grey[50],
                           filled: true,
                         ),
+                        style: TextStyle(color: Colors.black),
                         onTap: () async {
                           final DateTime? pickedDate = await showDatePicker(
                             context: context,
@@ -121,67 +132,65 @@ class AddEventPage extends StatelessWidget {
                             lastDate: DateTime(2101),
                           );
                           if (pickedDate != null) {
-                            dateController.text = pickedDate.toLocal() as String;
+                            dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
                           }
                         },
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Please select a date' : null,
+                        validator: (value) => value == null || value.isEmpty ? 'Please select a date' : null,
                       ),
                       const SizedBox(height: 10),
-
-                      // Event Location
                       TextFormField(
                         controller: locationController,
                         decoration: InputDecoration(
-                          icon: const Icon(Icons.location_on),
+                          icon: Icon(Icons.location_on, color: isDarkMode ? Colors.white : Colors.black),
                           hintText: 'Location',
+                          hintStyle: TextStyle(color: Colors.black),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
-                          fillColor: Colors.grey[50],
+                          fillColor:Colors.grey[50],
                           filled: true,
                         ),
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Location is required' : null,
+                        style: TextStyle(color: Colors.black),
+                        validator: (value) => value == null || value.isEmpty ? 'Location is required' : null,
                       ),
                       const SizedBox(height: 10),
-
-                      // Event Category
                       TextFormField(
                         controller: categoryController,
                         decoration: InputDecoration(
-                          icon: const Icon(Icons.category),
+                          icon: Icon(Icons.category, color: isDarkMode ? Colors.white : Colors.black),
                           hintText: 'Category',
+                          hintStyle: TextStyle(color:Colors.black),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
                           fillColor: Colors.grey[50],
                           filled: true,
                         ),
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Category is required' : null,
+                        style: TextStyle(color: Colors.black),
+                        validator: (value) => value == null || value.isEmpty ? 'Category is required' : null,
                       ),
                       const SizedBox(height: 10),
-
-                      // Event Status Dropdown
                       DropdownButtonFormField<String>(
                         value: _status,
                         decoration: InputDecoration(
-                          icon: const Icon(Icons.timeline),
+                          icon: Icon(Icons.timeline, color: isDarkMode ? Colors.white : Colors.black),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
                           fillColor: Colors.grey[50],
                           filled: true,
@@ -194,12 +203,9 @@ class AddEventPage extends StatelessWidget {
                         onChanged: (value) {
                           _status = value!;
                         },
-                        validator: (value) =>
-                        value == null || value.isEmpty ? 'Please select a status' : null,
+                        validator: (value) => value == null || value.isEmpty ? 'Please select a status' : null,
                       ),
                       const SizedBox(height: 20),
-
-                      // Submit Button
                       ElevatedButton(
                         onPressed: () async {
                           if (_formKey.currentState?.validate() ?? false) {
@@ -211,20 +217,17 @@ class AddEventPage extends StatelessWidget {
                               category: categoryController.text.trim(),
                               date: dateController.text.trim(),
                               status: _status,
-                              createdBy:
-                              FirebaseAuth.instance.currentUser?.uid ?? '',
-                              syncStatus: false, // Reset to UnSynced on edit
-                              firebaseId: event?.firebaseId, // Retain firebaseId
-                              createdAt: event?.createdAt ??
-                                  DateFormat('dd-MM-yyyy hh:mm') as String,
+                              createdBy: FirebaseAuth.instance.currentUser?.uid ?? '',
+                              syncStatus: false,
+                              firebaseId: event?.firebaseId,
+                              createdAt: event?.createdAt ?? DateFormat('dd-MM-yyyy hh:mm').format(DateTime.now()),
                             );
 
                             bool success;
                             if (event == null) {
                               success = await _controller.addEventLocally(newEvent);
                             } else {
-                              success =
-                              await _controller.updateEventLocally(newEvent);
+                              success = await _controller.updateEventLocally(newEvent);
                             }
 
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -234,8 +237,7 @@ class AddEventPage extends StatelessWidget {
                                       ? "Event ${event == null ? 'added' : 'updated'} successfully."
                                       : "Failed to save event.",
                                 ),
-                                backgroundColor:
-                                success ? Colors.green : Colors.red,
+                                backgroundColor: success ? Colors.green : Colors.red,
                               ),
                             );
 
@@ -244,15 +246,9 @@ class AddEventPage extends StatelessWidget {
                         },
                         style: ElevatedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          backgroundColor: const Color(0xff273331),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 50,
-                            vertical: 15,
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          backgroundColor: isDarkMode ? Colors.grey : const Color(0xff273331),
+                          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         child: Text(event == null ? 'Add Event' : 'Update Event'),
                       ),
@@ -262,7 +258,6 @@ class AddEventPage extends StatelessWidget {
               ),
             ),
           ),
-          // Positioned Image
           Container(
             child: Image.asset(
               'lib/assets/images/giftBoxes.png',
@@ -274,6 +269,5 @@ class AddEventPage extends StatelessWidget {
         ],
       ),
     );
-
   }
 }

@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // Import image_picker
-import 'package:permission_handler/permission_handler.dart'; // Import permission_handler
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import '../services/shared_preference.dart';
 import '../models/gift.dart';
 
 class GiftDetailsPage extends StatefulWidget {
@@ -21,45 +23,55 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
   late String _category;
   late double _price;
   late bool _isPledged;
-  File? _imageFile;  // To hold the selected image file
+  File? _imageFile;
 
-  final ImagePicker _picker = ImagePicker();  // Image picker instance
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _name = widget.gift.name;
-    _description = widget.gift.description!;
-    _category = widget.gift.category!;
-    _price = widget.gift.price!;
+    _description = widget.gift.description ?? '';
+    _category = widget.gift.category ?? '';
+    _price = widget.gift.price ?? 0.0;
     _isPledged = widget.gift.status == 'pledged';
   }
 
-  // Function to request permission and pick an image
   Future<void> _pickImage() async {
-    // Request permission for camera and gallery
     await _requestPermissions();
 
-    // Show dialog to choose between camera or gallery
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final preferences = Provider.of<PreferencesService>(context, listen: false);
+        final isDarkMode = preferences.isDarkMode;
+
         return AlertDialog(
-          title: Text("Select Image Source"),
+          backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
+          title: Text(
+            "Select Image Source",
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+          ),
           actions: [
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
                 await _pickImageFromCamera();
               },
-              child: Text("Take a Picture"),
+              child: Text(
+                "Take a Picture",
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              ),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
                 await _pickImageFromGallery();
               },
-              child: Text("Choose from Gallery"),
+              child: Text(
+                "Choose from Gallery",
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              ),
             ),
           ],
         );
@@ -67,74 +79,72 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
     );
   }
 
-  // Request permissions for camera and gallery
   Future<void> _requestPermissions() async {
-    // Request permissions for camera and gallery
-    await [
-      Permission.camera,
-      Permission.photos,
-    ].request();
+    await [Permission.camera, Permission.photos].request();
   }
 
-  // Function to pick an image from the gallery
   Future<void> _pickImageFromGallery() async {
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
-        _imageFile = File(pickedFile.path);  // Update the image file
+        _imageFile = File(pickedFile.path);
       });
     }
   }
 
-  // Function to take a picture using the camera
   Future<void> _pickImageFromCamera() async {
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
-        _imageFile = File(pickedFile.path);  // Update the image file
+        _imageFile = File(pickedFile.path);
       });
     }
   }
 
-  // Function to save the gift details
   void _saveGift() {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
-      // Update the gift details
       widget.gift.name = _name;
       widget.gift.description = _description;
       widget.gift.category = _category;
       widget.gift.price = _price;
       widget.gift.status = _isPledged ? 'pledged' : 'available';
 
-      Navigator.pop(context, widget.gift); // Return updated gift
+      Navigator.pop(context, widget.gift);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final preferences = Provider.of<PreferencesService>(context);
+    final isDarkMode = preferences.isDarkMode;
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: Color(0xffefefef),
+      backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
-        backgroundColor: Color(0xffefefef),
+        backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
         title: Text(
           "Gift Details",
-          style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
       ),
       body: Stack(
         children: [
           Padding(
-            padding: EdgeInsets.all(16.0), // Padding around the whole form
+            padding: const EdgeInsets.all(16.0),
             child: Form(
               key: _formKey,
               child: Column(
                 children: [
-                  // Image Picker (to pick a gift image)
                   GestureDetector(
-                    onTap: _pickImage, // Tap to select or capture image
+                    onTap: _pickImage,
                     child: Column(
                       children: [
                         _imageFile == null
@@ -146,40 +156,37 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                         )
                             : Image.file(
                           _imageFile!,
-                          height: 150,
+                          height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
                           'Tap to select an image',
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                          style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey, fontSize: 14),
                         ),
                       ],
                     ),
-                  )
-
-                  ,
-
-
-                  SizedBox(height: 20),
-
-                  // Gift Name
+                  ),
+                  const SizedBox(height: 20),
                   TextFormField(
                     initialValue: _name,
                     decoration: InputDecoration(
-                      icon: Icon(Icons.card_giftcard),
+                      icon: Icon(Icons.card_giftcard, color: isDarkMode ? Colors.white : Colors.black),
+                      hintText: "Gift Name",
+                      hintStyle: const TextStyle(color: Colors.black),
                       enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                       ),
-                      hintText: "Gift Name",
                       fillColor: Colors.grey[50],
                       filled: true,
                     ),
+                    style: const TextStyle(color: Colors.black),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return "Please enter the gift name";
@@ -187,28 +194,29 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _name = value ?? '';
+                      _name = value!;
                     },
                     enabled: !_isPledged,
                   ),
-                  SizedBox(height: 10),
-
-                  // Gift Description
+                  const SizedBox(height: 10),
                   TextFormField(
                     initialValue: _description,
                     decoration: InputDecoration(
-                      icon: Icon(Icons.description),
+                      icon: Icon(Icons.description, color: isDarkMode ? Colors.white : Colors.black),
+                      hintText: "Description",
+                      hintStyle: const TextStyle(color: Colors.black),
                       enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                       ),
-                      hintText: "Description",
                       fillColor: Colors.grey[50],
                       filled: true,
                     ),
+                    style: const TextStyle(color: Colors.black),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return "Please enter a description";
@@ -216,28 +224,29 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _description = value ?? '';
+                      _description = value!;
                     },
                     enabled: !_isPledged,
                   ),
-                  SizedBox(height: 10),
-
-                  // Gift Category
+                  const SizedBox(height: 10),
                   TextFormField(
                     initialValue: _category,
                     decoration: InputDecoration(
-                      icon: Icon(Icons.category),
+                      icon: Icon(Icons.category, color: isDarkMode ? Colors.white : Colors.black),
+                      hintText: "Category",
+                      hintStyle: const TextStyle(color: Colors.black),
                       enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                       ),
-                      hintText: "Category",
                       fillColor: Colors.grey[50],
                       filled: true,
                     ),
+                    style: const TextStyle(color: Colors.black),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return "Please enter a category";
@@ -245,28 +254,29 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _category = value ?? '';
+                      _category = value!;
                     },
                     enabled: !_isPledged,
                   ),
-                  SizedBox(height: 10),
-
-                  // Gift Price
+                  const SizedBox(height: 10),
                   TextFormField(
                     initialValue: _price.toString(),
                     decoration: InputDecoration(
-                      icon: Icon(Icons.attach_money),
+                      icon: Icon(Icons.attach_money, color: isDarkMode ? Colors.white : Colors.black),
+                      hintText: "Price",
+                      hintStyle: const TextStyle(color: Colors.black),
                       enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                       ),
-                      hintText: "Price",
                       fillColor: Colors.grey[50],
                       filled: true,
                     ),
+                    style: const TextStyle(color: Colors.black),
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -278,26 +288,23 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _price = double.parse(value ?? '0');
+                      _price = double.parse(value!);
                     },
                     enabled: !_isPledged,
                   ),
-                  SizedBox(height: 10),
-
-
-                  // Save Button
+                  const SizedBox(height: 20),
                   if (!_isPledged)
                     ElevatedButton(
                       onPressed: _saveGift,
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        backgroundColor: Color(0xff273331),
-                        padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                        backgroundColor: isDarkMode ? Colors.grey : const Color(0xff273331),
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         "Save Gift",
                         style: TextStyle(fontSize: 18),
                       ),

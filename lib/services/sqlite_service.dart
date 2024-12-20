@@ -100,6 +100,7 @@ class LocalDatabase {
 
 
 
+
   Future<List<Map<String, dynamic>>> getEventsByUserId(String userId) async {
     final db = await MyDataBase;
     return await db!.query(
@@ -134,21 +135,20 @@ class LocalDatabase {
     );
   }
 
-  Future<void> updateUserField(int userId, String field, String value) async {
-    final db = await MyDataBase; // Ensure the database instance is initialized
+  Future<void> updateUserFieldById(int id, Map<String, dynamic> fieldsToUpdate) async {
+    final db = await MyDataBase;
 
     try {
       await db!.update(
-        'Users', // Table name
-        {field: value}, // Column to update with the new value
-        where: 'id = ?', // Match the user by ID
-        whereArgs: [userId], // Use the primary key `id`
+        'Users',
+        fieldsToUpdate,
+        where: 'id = ?', // Use the local database ID as the condition
+        whereArgs: [id],
       );
-
-      print("Field '$field' updated successfully for user ID $userId.");
+      print("Field(s) ${fieldsToUpdate.keys.join(', ')} updated successfully for local ID: $id.");
     } catch (e) {
-      print("Error updating field '$field' in database: $e");
-      throw Exception("Failed to update the user field.");
+      print("Error updating user field(s) in SQLite: $e");
+      throw Exception("Failed to update user field(s) in SQLite.");
     }
   }
 
