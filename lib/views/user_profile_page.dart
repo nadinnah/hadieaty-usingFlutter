@@ -1,20 +1,14 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:hadieaty/controllers/user_controller.dart';
-import 'package:hadieaty/models/event.dart';
-import 'package:hadieaty/models/gift.dart';
-import 'package:hadieaty/views/user_gift_list_page.dart';
-import 'friend_gift_list_page.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../controllers/user_controller.dart';
+import '../models/event.dart';
+import 'user_event_list_page.dart';
 import 'my_pledged_gifts_page.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-
-
-import 'package:permission_handler/permission_handler.dart';
-
-
 
 class UserProfilePage extends StatefulWidget {
   @override
@@ -25,24 +19,29 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final UserController _userController = UserController();
   int? _loggedInUserId;
   Map<String, dynamic> _userData = {};
-  List<Event> _createdEvents = [];
-  List<Gift> _pledgedGifts = [];
   File? _profileImage;
 
   @override
   void initState() {
     super.initState();
-    _initializeData(); // Call an async helper function
+    _initializeData();
   }
 
   Future<void> _initializeData() async {
-    await _fetchLoggedInUser(); // Example: Fetch logged-in user details
-    _loadUserData(); // Fetch user data
-    _loadCreatedEvents(); // Load created events
-    _loadPledgedGifts(); // Load pledged gifts
+    await _fetchLoggedInUser();
+    _loadUserData();
   }
 
-  // Load user data from the controller
+  Future<void> _fetchLoggedInUser() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      int userId = await _userController.getUserIdByEmail(user.email!);
+      setState(() {
+        _loggedInUserId = userId;
+      });
+    }
+  }
+
   void _loadUserData() async {
     if (_loggedInUserId != null) {
       var userData = await _userController.getUserData(_loggedInUserId!);
@@ -52,81 +51,45 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  void updateFCMToken() async {
-    try {
-      String? token = await FirebaseMessaging.instance.getToken();
-      User? currentUser = FirebaseAuth.instance.currentUser;
-
-      if (token != null && currentUser != null) {
-        String currentUserId = currentUser.uid; // Get the current user's ID
-
-        await FirebaseFirestore.instance.collection('Users').doc(currentUserId).update({
-          'fcmToken': token,
-        });
-        print('FCM token updated for user: $currentUserId');
-      } else {
-        print('Token or current user is null.');
-      }
-    } catch (e) {
-      print('Error updating FCM token: $e');
-    }
-  }
-
-
-  Future<void> _fetchLoggedInUser() async {
-    // Example: Using FirebaseAuth to get the current user's UID
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      int userId = await _userController.getUserIdByEmail(user.email!); // Fetch userId using email
-      setState(() {
-        _loggedInUserId = userId;
-      });
-    }
-  }
-
-  // Load created events for the user
-  void _loadCreatedEvents() async {
-    if (_loggedInUserId != null) {
-      var events = await _userController.getCreatedEvents(_loggedInUserId!);
-      setState(() {
-        _createdEvents = events;
-      });
-    }
-  }
-
-  // Load pledged gifts for the user
-  void _loadPledgedGifts() async {
-    if (_loggedInUserId != null) {
-      var gifts = await _userController.getPledgedGifts(_loggedInUserId!);
-      setState(() {
-        _pledgedGifts = gifts;
-      });
-    }
-  }
-
-  // Toggle notifications
-  void _toggleNotifications(bool value) {
+  void _toggleNotifications(bool value) async {
     setState(() {
       _userData['notifications'] = value;
     });
+
     if (_loggedInUserId != null) {
       _userController.updateUserNotifications(_loggedInUserId!, value);
     }
+
+    if (value) {
+      // Request notification permissions
+      await Permission.notification.request();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Notifications have been enabled.')),
+      );
+    } else {
+      // Direct user to app settings to disable notifications
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+              'Notifications have been disabled. Please update permissions in app settings if required.'),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () {
+              openAppSettings(); // Opens the app settings for notification permissions
+            },
+          ),
+        ),
+      );
+    }
   }
 
-  // Pick a profile picture using Image Picker
-  Future<void> _pickProfilePicture() async {
-    // Request camera and photo permissions
-    await requestPermissions();
 
-    // After permissions are granted, pick the image
+  Future<void> _pickProfilePicture() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
         _profileImage = File(pickedFile.path);
       });
-
-      // Update profile picture in local database
       if (_loggedInUserId != null) {
         await _userController.updateUserField(
             _loggedInUserId!, 'profilePic', pickedFile.path);
@@ -135,33 +98,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-
-  requestPermissions() async {
-    PermissionStatus cameraStatus = await Permission.camera.request();
-    PermissionStatus photosStatus = await Permission.photos.request();
-    if(await Permission.camera.isPermanentlyDenied ){
-      openAppSettings();
-    }
-    if (!cameraStatus.isGranted || !photosStatus.isGranted) {
-      // Request permissions if not granted
-      var status = await [
-        Permission.camera,
-        Permission.photos,
-      ].request();
-
-      if (status[Permission.camera]?.isGranted == false || status[Permission.photos]?.isGranted == false) {
-        // If any permission is not granted, show a message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please grant permissions to access camera and photos.')),
-        );
-      }
-    }
-  }
-
-
-  // Edit user field (e.g., name, email, or phone number)
   void _editUserField(String field, String initialValue) {
     TextEditingController _controller = TextEditingController(text: initialValue);
+
     showDialog(
       context: context,
       builder: (context) {
@@ -179,15 +118,50 @@ class _UserProfilePageState extends State<UserProfilePage> {
               child: Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _userData[field] = _controller.text;
-                });
-                if (_loggedInUserId != null) {
-                  _userController.updateUserField(
-                      _loggedInUserId!, field, _controller.text);
+              onPressed: () async {
+                String newValue = _controller.text.trim();
+
+                if (newValue.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Please enter a valid $field.")),
+                  );
+                  return;
                 }
-                Navigator.pop(context);
+
+                try {
+                  // Update UI state
+                  setState(() {
+                    _userData[field] = newValue;
+                  });
+
+                  // Ensure _loggedInUserId is set
+                  if (_loggedInUserId == null) {
+                    throw Exception("User ID not available. Unable to update $field.");
+                  }
+
+                  // Update Firestore
+                  await FirebaseFirestore.instance
+                      .collection('Users')
+                      .doc(FirebaseAuth.instance.currentUser!.uid)
+                      .update({field: newValue});
+
+                  // Update locally
+                  await _userController.updateUserField(
+                    _loggedInUserId!,
+                    field,
+                    newValue,
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$field updated successfully!')),
+                  );
+
+                  Navigator.pop(context);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Failed to update $field: $e")),
+                  );
+                }
               },
               child: Text("Save"),
             ),
@@ -197,18 +171,21 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xffefefef),
       appBar: AppBar(
         title: Text("My Profile"),
+        backgroundColor: const Color(0xffefefef),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Section
             Center(
               child: GestureDetector(
                 onTap: _pickProfilePicture,
@@ -220,81 +197,69 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       ? FileImage(File(_userData['profilePic']))
                       : AssetImage('lib/assets/images/default_profile.png')
                   as ImageProvider),
-                  child: _profileImage == null &&
-                      (_userData['profilePic'] == null)
-                      ? Icon(Icons.camera_alt, size: 50)
-                      : null,
                 ),
               ),
             ),
-            SizedBox(height: 20),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               "Personal Information",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             ListTile(
-              leading: Icon(Icons.person),
-              title: Text("Name"),
+              leading: const Icon(Icons.person),
+              title: const Text("Name"),
               subtitle: Text(_userData['name'] ?? 'Loading...'),
               trailing: IconButton(
-                icon: Icon(Icons.edit),
+                icon: const Icon(Icons.edit),
                 onPressed: () {
                   _editUserField('name', _userData['name'] ?? '');
                 },
               ),
             ),
             ListTile(
-              leading: Icon(Icons.email),
-              title: Text("Email"),
+              leading: const Icon(Icons.email),
+              title: const Text("Email"),
               subtitle: Text(_userData['email'] ?? 'Loading...'),
               trailing: IconButton(
-                icon: Icon(Icons.edit),
+                icon: const Icon(Icons.edit),
                 onPressed: () {
                   _editUserField('email', _userData['email'] ?? '');
                 },
               ),
             ),
             ListTile(
-              leading: Icon(Icons.phone),
-              title: Text("Phone Number"),
+              leading: const Icon(Icons.phone),
+              title: const Text("Phone Number"),
               subtitle: Text(_userData['number']?.toString() ?? 'Not Provided'),
               trailing: IconButton(
-                icon: Icon(Icons.edit),
+                icon: const Icon(Icons.edit),
                 onPressed: () {
                   _editUserField('number', _userData['number'] ?? '');
                 },
               ),
             ),
-            Divider(),
-            // Notification Settings
+            const Divider(),
             SwitchListTile(
-              title: Text("Enable Notifications"),
+              title: const Text("Enable Notifications"),
               value: _userData['notifications'] ?? true,
               onChanged: _toggleNotifications,
             ),
-            Divider(),
-
-            // Pledged Gifts Section
+            const Divider(),
             TextButton(
-              onPressed: _viewPledgedGifts,
-              child: Text(
-                "View My Pledged Gifts",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => UserEventListPage()),
+                );
+              },
+              child: const Text(
+                "Your Events",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // Navigate to pledged gifts page
-  void _viewPledgedGifts() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PledgedGiftsPage(),
       ),
     );
   }

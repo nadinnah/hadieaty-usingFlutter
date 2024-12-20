@@ -8,7 +8,6 @@ class EventController {
   final LocalDatabase localdb = LocalDatabase();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Add event locally in SQLite
   Future<bool> addEventLocally(Event event) async {
     try {
       int result = await localdb.insertEvent(event);
@@ -19,9 +18,9 @@ class EventController {
     }
   }
 
-  // Update event locally in SQLite
-  Future<bool> updateEvent(Event event) async {
+  Future<bool> updateEventLocally(Event event) async {
     try {
+      event.syncStatus=false;
       int rowsUpdated = await localdb.updateEvent(event);
 
       if (rowsUpdated == 0) {
@@ -37,38 +36,10 @@ class EventController {
     }
   }
 
-  // Publish an event to Firestore
-  Future<void> publishEvent(Event event) async {
-    try {
-      DocumentReference eventRef;
-
-      if (event.firebaseId == null) {
-        // Add new event to the global "Events" collection
-        eventRef = await _firestore.collection('Events').add(event.toMap());
-        event.firebaseId = eventRef.id;
-      } else {
-        // Update existing event
-        eventRef = _firestore.collection('Events').doc(event.firebaseId);
-        await eventRef.update(event.toMap());
-      }
-
-      // Mark as synced locally
-      event.syncStatus = true;
-      await localdb.updateEvent(event);
-
-      print("Event published to Firestore and marked as synced locally.");
-    } catch (e) {
-      print("Error publishing event: $e");
-    }
-  }
-
-  // Delete an event from both SQLite and Firestore
   Future<void> deleteEvent(Event event) async {
     try {
-      // Delete locally
       await localdb.deleteEvent(event.id!);
 
-      // Delete from Firestore if it has a Firebase ID
       if (event.firebaseId != null) {
         await _firestore.collection('Events').doc(event.firebaseId).delete();
       }
@@ -91,12 +62,6 @@ class EventController {
   }
 
 
-  // Fetch events for a user using FirestoreService
-  Future<List<Event>> fetchUserEvents() async {
-    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (userId.isEmpty) return [];
-    return await FirestoreService().getUserEvents(userId);
-  }
 
   Future<void> syncEventToFirebase(Event event) async {
     try {

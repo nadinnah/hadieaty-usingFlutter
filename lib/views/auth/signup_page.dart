@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/user_controller.dart';
 import '../../input_field.dart';
-import '../home_page.dart';
-import 'login_page.dart'; // To navigate to the login page
+import 'login_page.dart';
 
 class SignupPage extends StatefulWidget {
   @override
@@ -14,43 +12,16 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  final nameController = TextEditingController(); // Added name field
-  final phoneController = TextEditingController(); // Added phone field
-  final formKey = GlobalKey<FormState>();
-  bool isVisible = false;
-  final AuthenticationController authController = AuthenticationController();
-  final UserController userController = UserController();
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
 
+  final formKey = GlobalKey<FormState>();
+
+  bool isVisible = false;
   String errorMessage = '';
 
-  void handleSignUp() async {
-    String email = emailController.text.trim();
-    String password = passwordController.text.trim();
-    String name = nameController.text.trim();
-    String phone = phoneController.text.trim();
-    bool result = await authController.Sign_up(email, password, name, phone);
-
-    if (result) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sign-up successful! Please login.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
-            (Route<dynamic> route) => false,
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sign-up failed! Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+  final AuthenticationController authController = AuthenticationController();
+  final UserController userController = UserController();
 
   @override
   Widget build(BuildContext context) {
@@ -135,16 +106,46 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   SizedBox(height: 60),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       FocusScope.of(context).unfocus();
                       if (formKey.currentState!.validate()) {
-                        handleSignUp();
+                        String email = emailController.text.trim();
+                        String password = passwordController.text.trim();
+                        String name = nameController.text.trim();
+                        String phone = phoneController.text.trim();
+                        bool result = await authController.Sign_up(
+                            email, password, name, phone);
+
+                        if (result) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Sign-up successful! Please login.'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => LoginPage()),
+                            (Route<dynamic> route) => false,
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text('Sign-up failed! Please try again.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: Color(0xff273331),
-                      padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

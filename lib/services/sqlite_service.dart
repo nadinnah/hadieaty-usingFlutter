@@ -33,16 +33,6 @@ class LocalDatabase {
       print("Database does not exist, no need to delete.");
     }
   }
-  Future<void> clearDatabase() async {
-    final db = await _MyDataBase;
-
-    // Delete all data from each table
-    await db!.delete('Events');
-    await db.delete('Gifts');
-    await db.delete('Users');
-
-    print("All data cleared from the database.");
-  }
 
 
   // Initialize the database
@@ -105,7 +95,6 @@ class LocalDatabase {
 
       print("Database initialized.");
     });
-   // await clearDatabase();
     return mydb;
   }
 
@@ -120,6 +109,20 @@ class LocalDatabase {
     );
   }
 
+  Future<String?> getLoggedInUserName() async {
+    final db = await MyDataBase;
+    final result = await db!.query(
+      'Users',
+      columns: ['name'], // Only fetch the 'name' column
+      where: 'isOwner = ?', // Assuming 'isOwner' marks the current logged-in user
+      whereArgs: [1], // isOwner = 1 indicates the logged-in user
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['name'] as String;
+    }
+    return null;
+  }
 
   Future<int> insertUser(Map<String, dynamic> userData) async {
     final db = await MyDataBase;
@@ -131,14 +134,22 @@ class LocalDatabase {
     );
   }
 
+  Future<void> updateUserField(int userId, String field, String value) async {
+    final db = await MyDataBase; // Ensure the database instance is initialized
 
-  Future<int> insertEventWithUserId(Map<String, dynamic> eventData) async {
-    final db = await MyDataBase;
-    return await db!.insert(
-      'Events', // Table name
-      eventData, // Data including userId
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    try {
+      await db!.update(
+        'Users', // Table name
+        {field: value}, // Column to update with the new value
+        where: 'id = ?', // Match the user by ID
+        whereArgs: [userId], // Use the primary key `id`
+      );
+
+      print("Field '$field' updated successfully for user ID $userId.");
+    } catch (e) {
+      print("Error updating field '$field' in database: $e");
+      throw Exception("Failed to update the user field.");
+    }
   }
 
 
@@ -182,6 +193,8 @@ class LocalDatabase {
     );
     return result;  // Return the ID of the inserted event
   }//USED
+
+
   Future<int> updateEvent(Event event) async {
     final db = await MyDataBase;
 
@@ -204,8 +217,6 @@ class LocalDatabase {
       whereArgs: [event.id],
     );
   }
-
-
 
 
   Future<int> deleteEvent(int eventId) async {
@@ -238,17 +249,6 @@ class LocalDatabase {
     });
   }
 
-
-  Future<int> updateTheGift(int giftId, Gift gift) async {
-    final db =
-        await MyDataBase; // Make sure this is correctly referring to your database
-    return await db!.update(
-      'Gifts', // Table name
-      gift.toMap(), // The map of the gift to update
-      where: 'id = ?', // Condition to find the correct gift by id
-      whereArgs: [giftId], // Arguments to substitute for the '?' placeholder
-    );
-  }//USED
 
 // Delete a gift by ID
   Future<int> deleteGift(int giftId) async {
@@ -283,16 +283,6 @@ class LocalDatabase {
     return result.isNotEmpty ? result.first : {};
   }
 
-  // Update user field (name, email, notifications, etc.)
-  Future<void> updateUserField(int userId, String field, String value) async {
-    final db = await MyDataBase;
-    await db!.update(
-      'Users',
-      {field: value},
-      where: 'id = ?',
-      whereArgs: [userId],
-    );
-  }
 
 
 
@@ -325,15 +315,6 @@ class LocalDatabase {
     return null; // Return null if no user is found
   }
 
-// Fetch all gifts for a specific event
-  Future<List<Map<String, dynamic>>> getGiftsForEvent(int eventId) async {
-    final db = await MyDataBase; // Ensure the database instance is available
-    return await db!.query(
-      'Gifts', // Table name
-      where: 'eventId = ?', // Filter by eventId
-      whereArgs: [eventId], // Event ID to filter gifts
-    );
-  }
 
   Future<int> updateGift(Gift gift) async {
     final db = await MyDataBase; // Ensure the database instance is available

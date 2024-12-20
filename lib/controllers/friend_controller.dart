@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../firebase_api.dart';
+import '../services/firebase_api.dart';
 import '../models/friend.dart';
 
 class FriendController {
@@ -16,55 +16,7 @@ class FriendController {
   }
 
 
-  Future<List<Friend>> fetchFriends() async {
-    try {
-      String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      // Fetch the current user's friends list
-      var userDoc = await _firestore.collection('Users').doc(userId).get();
-      var friendsIds = userDoc.data()?['friends'] ?? [];
-
-      // Fetch details for each friend
-      List<Friend> friends = await Future.wait(friendsIds.map((friendId) async {
-        var friendDoc = await _firestore.collection('Users').doc(friendId).get();
-        var friendData = friendDoc.data();
-
-        if (friendData != null) {
-          // Fetch upcoming events count for the friend
-          int eventCount = await _fetchUpcomingEventsCount(friendId);
-          return Friend(
-            id: friendId,
-            name: friendData['name'],
-            profilePicture: friendData['profilePicture'] ?? '',
-            phone: friendData['phone'] ?? '',
-            upcomingEventsCount: eventCount,
-          );
-        }
-        return null;
-      }).whereType<Friend>().toList());
-
-      return friends;
-    } catch (e) {
-      print('Error fetching friends: $e');
-      return [];
-    }
-  }
-
-  // Fetch upcoming events count for a friend
-  Future<int> _fetchUpcomingEventsCount(String friendId) async {
-    try {
-      var snapshot = await _firestore
-          .collection('Events')
-          .where('createdBy', isEqualTo: friendId)
-          .where('status', isEqualTo: 'Upcoming')
-          .get();
-
-      return snapshot.docs.length;
-    } catch (e) {
-      print('Error fetching upcoming events count: $e');
-      return 0;
-    }
-  }
   Future<void> addFriendByPhone(String phoneNumber) async {
     try {
       String currentUserId = FirebaseAuth.instance.currentUser!.uid;
@@ -126,6 +78,48 @@ class FriendController {
       });
     } catch (e) {
       print('Error deleting friend: $e');
+    }
+  }
+
+  Future<List<Friend>> getFriends() async {
+    try {
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (userId.isEmpty) return [];
+
+      // Fetch user's document
+      var userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .get();
+
+      if (!userDoc.exists) return [];
+
+      // Extract friend IDs
+      List<dynamic> friendIds = userDoc.data()?['friends'] ?? [];
+
+      // Fetch friend details
+      List<Friend> friends = [];
+      for (String friendId in friendIds) {
+        var friendDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(friendId)
+            .get();
+
+        if (friendDoc.exists) {
+          var friendData = friendDoc.data();
+          friends.add(Friend(
+            id: friendId,
+            name: friendData?['name'] ?? 'Unknown',
+            profilePicture: friendData?['profilePicture'] ?? '',
+            phone: friendData?['phone'] ?? '',
+            upcomingEventsCount: 0, // This can be updated dynamically later
+          ));
+        }
+      }
+      return friends;
+    } catch (e) {
+      print("Error fetching friends: $e");
+      return [];
     }
   }
 }

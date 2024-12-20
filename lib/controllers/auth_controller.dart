@@ -5,8 +5,8 @@ import 'package:hadieaty/services/sqlite_service.dart';
 
 class AuthenticationController {
 
-  FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  LocalDatabase _localDatabase = LocalDatabase();
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+  LocalDatabase localDb = LocalDatabase();
 
   Sign_in(emailAddress, password) async {
     try {
@@ -19,17 +19,17 @@ class AuthenticationController {
         String userId = credential.user!.uid;
 
         // Update `isOwner` in Firestore
-        await _firestore.collection('Users').doc(userId).update({
+        await firestore.collection('Users').doc(userId).update({
           'isOwner': true,
         });
 
         // Update `isOwner` in local SQLite database
-        await _localDatabase.updateUserIsOwner(emailAddress, 1);
+        await localDb.updateUserIsOwner(emailAddress, 1);
 
         // Fetch and update FCM token
         String? fcmToken = await FirebaseMessaging.instance.getToken();
         if (fcmToken != null) {
-          await _firestore.collection('Users').doc(userId).update({
+          await firestore.collection('Users').doc(userId).update({
             'fcmToken': fcmToken,
           });
           print('FCM token updated for user: $userId');
@@ -61,7 +61,7 @@ class AuthenticationController {
       String? fcmToken = await FirebaseMessaging.instance.getToken();
 
       // Create a new user document in Firestore
-      await _firestore.collection('Users').doc(credential.user!.uid).set({
+      await firestore.collection('Users').doc(credential.user!.uid).set({
         'name': name,
         'email': emailAddress,
         'phone': phone,
@@ -71,7 +71,7 @@ class AuthenticationController {
       });
 
       // Add user to local SQLite database
-      await _localDatabase.insertUser({
+      await localDb.insertUser({
         'name': name,
         'email': emailAddress,
         'preferences': '', // Optional field

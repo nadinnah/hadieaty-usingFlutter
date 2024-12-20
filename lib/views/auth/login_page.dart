@@ -1,43 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/controllers/auth_controller.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../../input_field.dart';
 
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
 }
+
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+
   final formKey = GlobalKey<FormState>();
+
   AuthenticationController authController = AuthenticationController();
+
   bool isVisible = false;
   String errorMessage = '';
 
-  Future<void> login() async {
-    String email = emailController.text.trim();
-    String password = passwordController.text.trim();
-
-    // Move validation check here
-    if (formKey.currentState!.validate()) {
-      bool status = await authController.Sign_in(email, password);
-      if (status) {
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        setState(() {
-          errorMessage = 'Login failed: Invalid credentials';
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Invalid credentials. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,8 +92,27 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     SizedBox(height: 60),
                     ElevatedButton(
-                      onPressed: () {
-                        login();
+                      onPressed: () async {
+                        String email = emailController.text.trim();
+                        String password = passwordController.text.trim();
+
+                        // Move validation check here
+                        if (formKey.currentState!.validate()) {
+                          bool status = await authController.Sign_in(email, password);
+                          if (status) {
+                            Navigator.pushReplacementNamed(context, '/home');
+                          } else {
+                            setState(() {
+                              errorMessage = 'Login failed: Invalid credentials';
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Invalid credentials. Please try again.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white,

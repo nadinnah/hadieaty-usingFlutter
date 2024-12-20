@@ -1,20 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hadieaty/models/event.dart';
 import 'package:hadieaty/controllers/event_controller.dart';
 import 'package:hadieaty/views/user_gift_list_page.dart';
-import 'add_event.dart';
-import 'friend_gift_list_page.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
+import 'event_details_page.dart';
+import 'package:intl/intl.dart';
 
 class UserEventListPage extends StatefulWidget {
-  final List<Event> events;
-  final Function(List<Event>) onEventsUpdated;
+
+  final List<Event>? events;
+  final Function(List<Event>)? onEventsUpdated;
 
   UserEventListPage({
-    required this.events,
-    required this.onEventsUpdated,
+    this.events,
+    this.onEventsUpdated,
   });
 
   @override
@@ -22,55 +22,95 @@ class UserEventListPage extends StatefulWidget {
 }
 
 class _UserEventListPageState extends State<UserEventListPage> {
-  final EventController _controller = EventController();
-  late List<Event> _eventsList;
+  final _formKey = GlobalKey<FormState>();
+  final EventController eventController = EventController();
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+  late List<Event> eventsList = [];
+  bool _isLoading = false;
   String _searchQuery = "";
-  String _sortOption = 'Name';
-  bool _isLoading = false; // Loading state
+  String sortOption = 'Name';
 
   @override
   void initState() {
     super.initState();
-    _loadEvents();
+    loadEvents();
   }
 
-  Future<void> _addEvent() async {
-    bool? result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AddEventPage()),
-    );
+  Future<void> loadEvents() async {
+    setState(() => _isLoading = true);
 
-    if (result == true) { // Reload events after returning
-      await _loadEvents();
+    // Clear AnimatedList
+    for (int i = eventsList.length - 1; i >= 0; i--) {
+      _listKey.currentState?.removeItem(
+        i,
+            (context, animation) => _buildEventTile(eventsList[i], animation, i),
+      );
+    }
+
+    // Load events
+    var events = await eventController.getEventsForCurrentUser();
+    setState(() {
+      eventsList = events;
+      _isLoading = false;
+    });
+
+    // Add events with animation
+    for (int i = 0; i < eventsList.length; i++) {
+      _listKey.currentState?.insertItem(i);
     }
   }
 
-  Future<void> _loadEvents() async {
-    setState(() => _isLoading = true);
-
-    var events = await _controller.getEventsForCurrentUser();
-
+  void sortEvents(String option) {
     setState(() {
-      _eventsList = events;
-      _isLoading = false;
+      sortOption = option;
+      switch (sortOption) {
+        case 'Name':
+          eventsList.sort((a, b) => a.name.compareTo(b.name));
+          break;
+        case 'Category':
+          eventsList.sort((a, b) => a.category.compareTo(b.category));
+          break;
+        case 'Status':
+          eventsList.sort((a, b) {
+            const statusOrder = {'Current': 0, 'Upcoming': 1, 'Past': 2};
+            return statusOrder[a.status]!.compareTo(statusOrder[b.status]!);
+          });
+          break;
+      }
     });
   }
 
 
 
-  Future<bool?> _confirmDeleteEvent(String eventName) async {
+  Future<void> publishEvent(Event event) async {
+    try {
+      await eventController.syncEventToFirebase(event);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Event '${event.name}' published successfully!")),
+      );
+      await loadEvents();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to publish event '${event.name}'.")),
+      );
+    }
+  }
+
+  confirmDeleteEvent(String eventName) async {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text("Delete Event"),
-        content: Text("Are you sure you want to delete the event \"$eventName\"?"),
+        content:
+        Text("Are you sure you want to delete the event \"$eventName\"?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Cancel
+            onPressed: () => Navigator.of(context).pop(false),
             child: Text("Cancel"),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Confirm
+            onPressed: () => Navigator.of(context).pop(true),
             child: Text(
               "Delete",
               style: TextStyle(color: Colors.red),
@@ -81,73 +121,93 @@ class _UserEventListPageState extends State<UserEventListPage> {
     );
   }
 
+  Future<void> addEvent() async {
+    bool? result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddEventPage()),
+    );
 
-
-
-  void _searchEvents(String query) {
-    setState(() {
-      _searchQuery = query;
-      _eventsList = _eventsList
-          .where((event) => event.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-      _applySorting();
-    });
-  }
-
-
-  Future<void> _publishSingleEvent(Event event) async {
-    try {
-      await _controller.syncEventToFirebase(event); // Sync changes to Firebase
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Event '${event.name}' published successfully!")),
-      );
-      await _loadEvents(); // Refresh events to reflect updated status
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to publish event '${event.name}'. Please try again.")),
-      );
-      print("Error publishing event: $e");
+    if (result == true) {
+      await loadEvents();
     }
   }
 
 
 
-  void _sortEvents(String option) {
-    setState(() {
-      _sortOption = option;
-      _applySorting();
-    });
+  void removeEventAnimated(int index) {
+    if (index < 0 || index >= eventsList.length) return; // Check for valid index
+    final removedEvent = eventsList.removeAt(index);
+    _listKey.currentState?.removeItem(
+      index,
+          (context, animation) => _buildEventTile(removedEvent, animation, index),
+    );
   }
 
-  void _applySorting() {
-    switch (_sortOption) {
-      case 'Name':
-        _eventsList.sort((a, b) => a.name.compareTo(b.name));
-        break;
-      case 'Category':
-        _eventsList.sort((a, b) => a.category.compareTo(b.category));
-        break;
-      case 'Status':
-        _eventsList.sort((a, b) => a.status.compareTo(b.status));
-        break;
-    }
-  }
-
-
-  String formatDate(String date) {
-    DateTime parsedDate = DateTime.parse(date);
-    return DateFormat('MMMM dd, yyyy').format(parsedDate);
-  }
-
-  Widget _loadingIndicator() {
-    return _isLoading ? CircularProgressIndicator() : Container();
-  }
-
-  Widget _emptyState() {
-    return Center(
-      child: Text(
-        "No events found. Click 'Add New Event' to get started!",
-        style: TextStyle(fontSize: 18, color: Colors.grey),
+  Widget _buildEventTile(Event event, Animation<double> animation, int index) {
+    if (index < 0 || index >= eventsList.length) return SizedBox.shrink(); // Prevent invalid access
+    return SlideTransition(
+      position: animation.drive(
+        Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+      ),
+      child: Card(
+        elevation: 3,
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        child: ListTile(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserGiftListPage(
+                  eventName: event.name,
+                  firebaseEventId: event.firebaseId!,
+                ),
+              ),
+            );
+          },
+          leading: IconButton(
+            icon: const Icon(Icons.edit, color: Colors.green),
+            onPressed: () async {
+              bool? result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddEventPage(event: event),
+                ),
+              );
+              if (result == true) await loadEvents();
+            },
+          ),
+          title: Text(event.name),
+          subtitle: Text(
+            "Location: ${event.location}\n"
+                "Status: ${event.status}\n"
+                "Date: ${event.date}",
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!event.syncStatus)
+                ElevatedButton(
+                  onPressed: () => publishEvent(event),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0x4C4CC1FF),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("Publish"),
+                ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  bool? confirm = await confirmDeleteEvent(event.name);
+                  if (confirm == true) {
+                    removeEventAnimated(index);
+                    await eventController.deleteEvent(event);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -163,16 +223,6 @@ class _UserEventListPageState extends State<UserEventListPage> {
           'My Events',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: _sortEvents,
-            itemBuilder: (context) => [
-              PopupMenuItem(value: 'Name', child: Text('Sort by Name')),
-              PopupMenuItem(value: 'Category', child: Text('Sort by Category')),
-              PopupMenuItem(value: 'Status', child: Text('Sort by Status')),
-            ],
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -184,104 +234,75 @@ class _UserEventListPageState extends State<UserEventListPage> {
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
-              onChanged: _searchEvents,
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: _addEvent,
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: const Color(0xff273331),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Add New Event',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-
-            ],
-          ),
-          SizedBox(height: 20),
-          _loadingIndicator(), // Show loading indicator if necessary
-          SizedBox(height: 20),
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : _eventsList.isEmpty
-                ? _emptyState()
-                : ListView.builder(
-              itemCount: _eventsList.length,
-              itemBuilder: (context, index) {
-                var event = _eventsList[index];
-                return Card(
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                  child: ListTile(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => UserGiftListPage(eventName: event.name, firebaseEventId: event.firebaseId!,),
-                        ),
-                      );
-                    },
-                    leading: IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () async {
-                        bool? result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => AddEventPage(event: event)),
-                        );
-                        if (result == true) await _loadEvents(); // Reload events
-                      },
-                    ),
-                    title: Text(event.name),
-                    subtitle: Text(
-                      "Location: ${event.location}\n"
-                          "Status: ${event.status}\n"
-                          "Date: ${event.date}",
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (!event.syncStatus)
-                          ElevatedButton(
-                            onPressed: () async {
-                              await _publishSingleEvent(event);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text("Publish"),
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () async {
-                            bool? confirm = await _confirmDeleteEvent(event.name);
-                            if (confirm == true) {
-                              await _controller.deleteEvent(event);
-                              await _loadEvents();
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+              onChanged: (query) {
+                setState(() {
+                  _searchQuery = query;
+                  eventsList = eventsList
+                      .where((event) => event.name
+                      .toLowerCase()
+                      .contains(query.toLowerCase()))
+                      .toList();
+                });
               },
             ),
           ),
-
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ElevatedButton(
+                  onPressed: addEvent,
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: const Color(0xff273331),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Add New Event',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
+                DropdownButton<String>(
+                  value: sortOption,
+                  onChanged: (value) => sortEvents(value!),
+                  items: [
+                    DropdownMenuItem(value: 'Name', child: Text('Sort by Name')),
+                    DropdownMenuItem(
+                        value: 'Category', child: Text('Sort by Category')),
+                    DropdownMenuItem(
+                        value: 'Status', child: Text('Sort by Status')),
+                  ],
+                  underline: Container(),
+                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (eventsList.isEmpty)
+            const Center(
+              child: Text("No events found."),
+            )
+          else
+            Expanded(
+              child: AnimatedList(
+                key: _listKey,
+                initialItemCount: eventsList.length,
+                itemBuilder: (context, index, animation) {
+                  return _buildEventTile(eventsList[index], animation, index);
+                },
+              ),
+            ),
         ],
       ),
     );
   }
+
 }

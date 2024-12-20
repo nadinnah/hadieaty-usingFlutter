@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../firebase_api.dart';
+import '../services/firebase_api.dart';
 import '../models/gift.dart';
 import '../services/sqlite_service.dart';
 
@@ -159,46 +159,46 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
               Gift gift = gifts[index];
 
               return Card(
-                elevation: 3,
-                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                color: gift.status == "Pledged"
-                    ? Colors.orange[100]
-                    : gift.status == "Purchased"
-                    ? Colors.green[100]
-                    : Colors.blue[100],
-                child: ListTile(
-                  title: Text(
-                    gift.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    "Category: ${gift.category ?? 'N/A'}\n"
-                        "Price: \$${gift.price ?? 0.0}\n"
-                        "Status: ${gift.status}",
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Pledge Button (if gift is Available)
-                      if (gift.status == "available")
-                        ElevatedButton(
-                          onPressed: () => _pledgeGift(gift),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                          child: const Text("Pledge"),
-                        ),
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  color: gift.status == "Pledged"
+                      ? Colors.orange[100]
+                      : gift.status == "Purchased"
+                      ? Colors.green[100]
+                      : Colors.blue[100],
+                  child: ListTile(
+                    title: Text(
+                      gift.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      "Category: ${gift.category ?? 'N/A'}\n"
+                          "Price: \$${gift.price ?? 0.0}\n"
+                          "Status: ${gift.status}",
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Pledge Button (if gift is Available)
+                        if (gift.status == "available")
+                          ElevatedButton(
+                            onPressed: () => _pledgeGift(gift),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                            child: const Text("Pledge"),
+                          ),
 
-                      // Purchase Button (only visible if the user pledged the gift)
-                      if (gift.status == "Pledged" && gift.pledgedBy == currentUserId)
-                        ElevatedButton(
-                          onPressed: () => _purchaseGift(gift),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                          child: const Text("Purchase"),
-                        ),
+                        // Purchase Button (only visible if the user pledged the gift)
+                        if (gift.status == "Pledged" && gift.pledgedBy == currentUserId)
+                          ElevatedButton(
+                            onPressed: () => _purchaseGift(gift),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                            child: const Text("Purchase"),
+                          ),
 
 
-                    ],
+                      ],
+                    ),
                   ),
-                ),
               );
             },
           );

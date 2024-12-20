@@ -5,17 +5,6 @@ import 'package:hadieaty/services/sqlite_service.dart'; // LocalDatabase service
 class UserController {
   final LocalDatabase _localDatabase = LocalDatabase();
 
-  Future<int> insertUser(Map<String, dynamic> userData) async {
-    try {
-      int userId = await _localDatabase.insertUser(userData);
-      print("User added to local database with ID: $userId");
-      return userId;
-    } catch (e) {
-      print("Error inserting user: $e");
-      throw Exception("Failed to add user to local database");
-    }
-  }//NOT USED
-
   // Fetch user data by userId
   Future<Map<String, dynamic>> getUserData(int userId) async {
     var userData = await _localDatabase.getUserById(userId);
@@ -33,15 +22,29 @@ class UserController {
     return giftsData.map((e) => Gift.fromMap(e)).toList();
   }
 
-  // Update user field (name, email, or notifications)
   Future<void> updateUserField(int userId, String field, String value) async {
-    await _localDatabase.updateUserField(userId, field, value);
+    try {
+      // Ensure the field is valid and not empty
+      if (field.isEmpty || value.isEmpty) {
+        throw Exception("Field and value cannot be empty.");
+      }
+
+      // Update the local database
+      await _localDatabase.updateUserField(userId, field, value);
+
+      print("User field '$field' updated successfully to '$value' for user ID $userId.");
+    } catch (e) {
+      print("Error updating user field: $e");
+      rethrow; // Re-throw the error if needed for further handling
+    }
   }
+
 
   // Update notification preference
   Future<void> updateUserNotifications(int userId, bool value) async {
     await _localDatabase.updateUserNotifications(userId, value);
   }
+
 
   Future<int> getUserIdByEmail(String email) async {
     var user = await _localDatabase.getUserByEmail(email);

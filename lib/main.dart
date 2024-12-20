@@ -2,13 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:hadieaty/firebase_api.dart';
+import 'package:hadieaty/services/firebase_api.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'models/event.dart';
 import 'services/shared_preference.dart';
-import 'views/add_event.dart';
+import 'views/event_details_page.dart';
 import 'views/auth/login_page.dart';
 import 'views/auth/signup_page.dart';
 import 'views/user_event_list_page.dart';
