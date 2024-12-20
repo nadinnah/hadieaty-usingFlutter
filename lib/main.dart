@@ -43,10 +43,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => LoginPage(),
         '/signup': (context) => SignupPage(),
         '/home': (context) => HomePage(),
-        '/userEventList': (context) => UserEventListPage(
-          events: [],
-          onEventsUpdated: (List<Event> x) {},
-        ),
+        '/userEventList': (context) => UserEventListPage(),
         '/addEvent': (context) => AddEventPage(),
         '/userProfile': (context) => UserProfilePage(),
       },

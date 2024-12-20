@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hadieaty/controllers/auth_controller.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../input_field.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -19,11 +18,10 @@ class _LoginPageState extends State<LoginPage> {
   bool isVisible = false;
   String errorMessage = '';
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false, // Allow resizing when keyboard appears
+      resizeToAvoidBottomInset: false,
       backgroundColor: Color(0xffefefef),
       appBar: AppBar(
         backgroundColor: Color(0xffefefef),
@@ -34,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
       body: GestureDetector(
         onTap: () {
-          FocusScope.of(context).unfocus(); // Dismiss the keyboard when tapping outside
+          FocusScope.of(context).unfocus();
         },
         child: Stack(
           children: [
@@ -57,46 +55,80 @@ class _LoginPageState extends State<LoginPage> {
                       ],
                     ),
                     SizedBox(height: 50),
-                    InputField(
-                      hint: 'Email',
-                      icon: Icon(Icons.email),
-                      controller: emailController,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Email is required';
-                        }
-                        if (!value.contains('@') || !value.contains('.')) {
-                          return 'Enter a valid email address';
-                        }
-                        return null;
-                      },
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                      child: TextFormField(
+                        key: Key('custom_email_field'),
+                        controller: emailController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Email is required';
+                          }
+                          if (!value.contains('@') || !value.contains('.')) {
+                            return 'Enter a valid email address';
+                          }
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          icon: Icon(Icons.email),
+                          hintText: 'Email',
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          fillColor: Colors.grey[50],
+                          filled: true,
+                        ),
+                      ),
                     ),
                     SizedBox(height: 20),
-                    InputField(
-                      hint: 'Password',
-                      icon: Icon(Icons.lock),
-                      controller: passwordController,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password is required';
-                        }
-                        return null;
-                      },
-                      obscureText: !isVisible,
-                      isPassword: true,
-                      onVisibilityToggle: () {
-                        setState(() {
-                          isVisible = !isVisible;
-                        });
-                      },
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                      child: TextFormField(
+                        key: Key('custom_password_field'),
+                        controller: passwordController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Password is required';
+                          }
+                          return null;
+                        },
+                        obscureText: !isVisible,
+                        decoration: InputDecoration(
+                          icon: Icon(Icons.lock),
+                          hintText: 'Password',
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          fillColor: Colors.grey[50],
+                          filled: true,
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                isVisible = !isVisible;
+                              });
+                            },
+                            icon: Icon(
+                              isVisible ? Icons.visibility : Icons.visibility_off,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                     SizedBox(height: 60),
                     ElevatedButton(
+                      key: Key('login_button'),
                       onPressed: () async {
                         String email = emailController.text.trim();
                         String password = passwordController.text.trim();
 
-                        // Move validation check here
                         if (formKey.currentState!.validate()) {
                           bool status = await authController.Sign_in(email, password);
                           if (status) {
@@ -117,8 +149,7 @@ class _LoginPageState extends State<LoginPage> {
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white,
                         backgroundColor: Color(0xff273331),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 15),
+                        padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

@@ -44,6 +44,7 @@ class _SignupPageState extends State<SignupPage> {
               child: Column(
                 children: [
                   InputField(
+                    key: Key('name_field'),
                     hint: 'Name',
                     icon: Icon(Icons.person),
                     controller: nameController,
@@ -56,6 +57,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   SizedBox(height: 10),
                   InputField(
+                    key: Key('phone_field'),
                     hint: 'Phone Number',
                     icon: Icon(Icons.phone),
                     controller: phoneController,
@@ -68,6 +70,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   SizedBox(height: 10),
                   InputField(
+                    key: Key('email_field2'),
                     hint: 'Email',
                     icon: Icon(Icons.email),
                     controller: emailController,
@@ -84,6 +87,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   SizedBox(height: 10),
                   InputField(
+                    key: Key('password_field2'),
                     hint: 'Password',
                     icon: Icon(Icons.lock),
                     controller: passwordController,
@@ -106,6 +110,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   SizedBox(height: 60),
                   ElevatedButton(
+                    key: Key('signup_button'),
                     onPressed: () async {
                       FocusScope.of(context).unfocus();
                       if (formKey.currentState!.validate()) {

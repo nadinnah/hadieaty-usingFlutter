@@ -38,7 +38,7 @@ class LocalDatabase {
   // Initialize the database
   initialize() async {
 
-    await deleteOldDatabase();
+    //await deleteOldDatabase();
     String mypath = await getDatabasesPath();
     String path = join(mypath, 'myDataBase.db');
     Database mydb = await openDatabase(path, version: Version, onCreate: (db, Version) async {

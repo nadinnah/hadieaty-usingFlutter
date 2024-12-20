@@ -8,12 +8,14 @@ class InputField extends StatelessWidget {
   final bool obscureText;
   final bool isPassword;
   final Function()? onVisibilityToggle;
+  final Key key;
 
   InputField({
     required this.hint,
     required this.icon,
     required this.controller,
     required this.validator,
+    required this.key,
     this.obscureText = false,
     this.isPassword = false,
     this.onVisibilityToggle,  Function(dynamic value)? onSaved,  Future<void> Function()? onTap,
@@ -24,6 +26,7 @@ class InputField extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25.0),
       child: TextFormField(
+        key: key,
         controller: controller,
         validator: validator,
         obscureText: isPassword ? obscureText : false,
