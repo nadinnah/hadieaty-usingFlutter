@@ -4,11 +4,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hadieaty/services/sqlite_service.dart';
 
 class AuthenticationController {
-
   FirebaseFirestore firestore = FirebaseFirestore.instance;
   LocalDatabase localDb = LocalDatabase();
 
-  Sign_in(emailAddress, password) async {
+  //Signs in a user with email and password, updates FCM token, and sets user as owner.
+  Future<bool> Sign_in(String emailAddress, String password) async {
     try {
       final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailAddress,
@@ -18,40 +18,34 @@ class AuthenticationController {
       if (credential.user != null) {
         String userId = credential.user!.uid;
 
-        // Update `isOwner` in Firestore
         await firestore.collection('Users').doc(userId).update({
           'isOwner': true,
         });
 
-        // Update `isOwner` in local SQLite database
         await localDb.updateUserIsOwner(emailAddress, 1);
 
-        // Fetch and update FCM token
         String? fcmToken = await FirebaseMessaging.instance.getToken();
         if (fcmToken != null) {
           await firestore.collection('Users').doc(userId).update({
             'fcmToken': fcmToken,
           });
-          print('FCM token updated for user: $userId');
-        } else {
-          print('Failed to retrieve FCM token.');
         }
-
-
 
         return true;
       }
+      return false;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
-        print('No user found for that email.');
+        throw Exception('No user found for that email.');
       } else if (e.code == 'wrong-password') {
-        print('Wrong password provided for that user.');
+        throw Exception('Wrong password provided for that user.');
       }
-      return false;
+      throw Exception('Failed to sign in.');
     }
   }
 
-  Sign_up(emailAddress, password, String name, String phone) async {
+  //Signs up a new user with email, password, name, and phone, and stores their data in Firestore and SQLite.
+  Future<bool> Sign_up(String emailAddress, String password, String name, String phone) async {
     try {
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailAddress,
@@ -60,44 +54,44 @@ class AuthenticationController {
 
       String? fcmToken = await FirebaseMessaging.instance.getToken();
 
-      // Create a new user document in Firestore
       await firestore.collection('Users').doc(credential.user!.uid).set({
         'name': name,
         'email': emailAddress,
         'phone': phone,
         'isOwner': false,
         'uid': credential.user!.uid,
-        'fcmToken': fcmToken ?? '', // Initialize with FCM token if available
+        'fcmToken': fcmToken ?? '',
       });
 
-      // Add user to local SQLite database
       await localDb.insertUser({
         'name': name,
         'email': emailAddress,
-        'preferences': '', // Optional field
-        'password': password, // Store securely if needed
-        'isOwner': 0, // Default to regular user
-        'profilePic': '', // Optional field
+        'preferences': '',
+        'password': password,
+        'isOwner': 0,
+        'profilePic': '',
         'number': int.parse(phone),
       });
 
-      print('User signed up successfully with FCM token: $fcmToken');
       return true;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
-        print('The password provided is too weak.');
+        throw Exception('The password provided is too weak.');
       } else if (e.code == 'email-already-in-use') {
-        print('The account already exists for that email.');
+        throw Exception('The account already exists for that email.');
       }
-      return false;
+      throw Exception('Failed to sign up.');
     } catch (e) {
-      print(e);
-      return false;
+      throw Exception('An error occurred during sign-up.');
     }
   }
 
-
-  Sign_out() async {
-        await FirebaseAuth.instance.signOut();
+  //Signs out the currently logged-in user.
+  Future<void> Sign_out() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      throw Exception('Failed to sign out.');
+    }
   }
 }

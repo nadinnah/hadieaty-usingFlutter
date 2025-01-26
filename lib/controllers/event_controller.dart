@@ -8,34 +8,29 @@ class EventController {
   final LocalDatabase localdb = LocalDatabase();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  //Adds an event to the local database.
   Future<bool> addEventLocally(Event event) async {
     try {
       int result = await localdb.insertEvent(event);
-      return result > 0; // Success if a row is inserted
+      return result > 0;
     } catch (e) {
-      print("Error adding event locally: $e");
       return false;
     }
   }
 
+  //Updates an event in the local database and marks it as unsynced.
   Future<bool> updateEventLocally(Event event) async {
     try {
-      event.syncStatus=false;
+      event.syncStatus = false;
       int rowsUpdated = await localdb.updateEvent(event);
 
-      if (rowsUpdated == 0) {
-        print("Failed to update event locally.");
-        return false;
-      }
-
-      print("Event updated locally.");
-      return true;
+      return rowsUpdated > 0;
     } catch (e) {
-      print("Error updating event locally: $e");
       return false;
     }
   }
 
+  //Deletes an event from the local database and Firestore if it exists there.
   Future<void> deleteEvent(Event event) async {
     try {
       await localdb.deleteEvent(event.id!);
@@ -43,52 +38,42 @@ class EventController {
       if (event.firebaseId != null) {
         await _firestore.collection('Events').doc(event.firebaseId).delete();
       }
-
-      print("Event deleted successfully.");
     } catch (e) {
-      print("Error deleting event: $e");
+      throw Exception("Failed to delete the event.");
     }
   }
 
+  //Retrieves events for the current user from the local database.
   Future<List<Event>> getEventsForCurrentUser() async {
     try {
-      // Replace with local SQLite query
       var localEvents = await localdb.getEventsByUserId(FirebaseAuth.instance.currentUser!.uid);
       return localEvents.map((e) => Event.fromMap(e)).toList();
     } catch (e) {
-      print("Error fetching events from local database: $e");
       return [];
     }
   }
 
-
-
+  //Syncs an event to Firestore, adding it if it doesn't exist or updating it if it does.
   Future<void> syncEventToFirebase(Event event) async {
     try {
       DocumentReference eventRef;
 
       if (event.firebaseId == null || event.firebaseId!.isEmpty) {
-        // Add new event to Firestore
         eventRef = await FirebaseFirestore.instance.collection('Events').add(event.toMap());
-        event.firebaseId = eventRef.id; // Set the Firestore document ID as firebaseId
+        event.firebaseId = eventRef.id;
         await FirebaseFirestore.instance
             .collection('Events')
             .doc(eventRef.id)
-            .update({'firebaseId': eventRef.id}); // Update the document with its ID
+            .update({'firebaseId': eventRef.id});
       } else {
-        // Update existing event
         eventRef = FirebaseFirestore.instance.collection('Events').doc(event.firebaseId);
         await eventRef.update(event.toMap());
       }
 
-      // Mark as synced locally
       event.syncStatus = true;
       await localdb.updateEvent(event);
-
-      print("Event successfully synced to Firestore with ID ${event.firebaseId}.");
     } catch (e) {
-      print("Error syncing event to Firestore: $e");
+      throw Exception("Failed to sync event to Firestore.");
     }
   }
-
 }

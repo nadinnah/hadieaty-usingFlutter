@@ -1,19 +1,19 @@
 class Friend {
-  String id; // Unique Firestore document ID
+  String id; // Firestore document ID
   String name;
   String profilePicture;
   String phone;
-  int upcomingEventsCount; // Field for the count of upcoming events
+  int upcomingEventsCount;
 
   Friend({
-    required this.id, // Firestore document ID
+    required this.id,
     required this.name,
     required this.profilePicture,
     required this.phone,
     required this.upcomingEventsCount,
   });
 
-  // Factory method to create a Friend object from Firestore data
+  /// Creates a `Friend` object from Firestore data.
   factory Friend.fromFirestore(String id, Map<String, dynamic> data) {
     return Friend(
       id: id,
@@ -24,7 +24,7 @@ class Friend {
     );
   }
 
-  // Converts Friend object into a Map for Firestore storage
+  /// Converts a `Friend` object into a map for Firestore storage.
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,

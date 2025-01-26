@@ -11,7 +11,7 @@ class Event {
   String status;
   String category;
   bool syncStatus;
-  String createdAt; // New createdAt field
+  String createdAt;
 
   Event({
     this.id,
@@ -20,14 +20,14 @@ class Event {
     required this.date,
     required this.location,
     required this.description,
-    required this.createdBy, // Store the Firebase UID here
+    required this.createdBy,
     required this.status,
     required this.category,
     this.syncStatus = false,
-    required this.createdAt, // Accept createdAt as a required parameter
+    required this.createdAt,
   });
 
-  // Convert to Map for Firestore
+  /// Converts the `Event` object to a map for Firestore.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -36,33 +36,32 @@ class Event {
       'date': date,
       'location': location,
       'description': description,
-      'createdBy': createdBy, // Store createdBy
+      'createdBy': createdBy,
       'status': status,
       'category': category,
       'syncStatus': syncStatus ? 'synced' : 'unsynced',
-      'createdAt': createdAt, // Add createdAt to the map
+      'createdAt': createdAt,
     };
   }
 
+  /// Creates an `Event` object from a map.
   factory Event.fromMap(Map<String, dynamic> map) {
     return Event(
-      id: map['id'] ,
-      firebaseId: map['firebaseId'], // Allow firebaseId to be null
-      name: map['name'] as String? ?? 'Unknown Event', // Fallback to 'Unknown Event'
+      id: map['id'],
+      firebaseId: map['firebaseId'],
+      name: map['name'] as String? ?? 'Unknown Event',
       date: (map['date'] is Timestamp)
-          ? (map['date'] as Timestamp).toDate().toIso8601String() // Convert Timestamp to String
-          : (map['date'] as String? ?? ''), // Handle null for date
-      location: map['location'] as String? ?? 'No Location', // Fallback to 'No Location'
-      description: map['description'] as String? ?? 'No Description', // Fallback to 'No Description'
-      createdBy: map['createdBy'] as String? ?? 'Unknown Creator', // Fallback for createdBy
-      status: map['status'] as String? ?? 'Unknown Status', // Fallback for status
-      category: map['category'] as String? ?? 'Uncategorized', // Fallback for category
+          ? (map['date'] as Timestamp).toDate().toIso8601String()
+          : (map['date'] as String? ?? ''),
+      location: map['location'] as String? ?? 'No Location',
+      description: map['description'] as String? ?? 'No Description',
+      createdBy: map['createdBy'] as String? ?? 'Unknown Creator',
+      status: map['status'] as String? ?? 'Unknown Status',
+      category: map['category'] as String? ?? 'Uncategorized',
       syncStatus: map['syncStatus'] == 'synced',
       createdAt: (map['createdAt'] is Timestamp)
-          ? (map['createdAt'] as Timestamp).toDate().toIso8601String() // Handle Timestamp
-          : (map['createdAt'] as String? ?? ''), // Handle null for createdAt
+          ? (map['createdAt'] as Timestamp).toDate().toIso8601String()
+          : (map['createdAt'] as String? ?? ''),
     );
   }
-
-
 }

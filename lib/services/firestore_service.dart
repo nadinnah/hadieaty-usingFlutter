@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/event.dart';
-import '../models/gift.dart'; // Ensure this imports your Event model
+import '../models/gift.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -12,7 +12,7 @@ class FirestoreService {
       var snapshot = await FirebaseFirestore.instance
           .collection('Events')
           .where('createdBy', isEqualTo: friendId)
-          .where('status', isEqualTo: 'Upcoming') // Filter by status
+          .where('status', isEqualTo: 'Upcoming')
           .get();
 
       return snapshot.docs.map((doc) {
@@ -20,17 +20,15 @@ class FirestoreService {
         return Event.fromMap(data..['id'] = doc.id);
       }).toList();
     } catch (e) {
-      print("Error fetching upcoming events for friend: $e");
-      return [];
+      throw Exception("Failed to fetch upcoming events for friend");
     }
   }
-
 
   Future<List<Gift>> getPledgedGiftsByUser(String userId) async {
     try {
       var snapshot = await _db
-          .collectionGroup('gifts') // Search across all "gifts" subcollections
-          .where('pledgedBy', isEqualTo: userId) // Filter by pledgedBy
+          .collectionGroup('gifts')
+          .where('pledgedBy', isEqualTo: userId)
           .get();
 
       return snapshot.docs.map((doc) {
@@ -38,12 +36,8 @@ class FirestoreService {
         return Gift.fromMap({...data, 'firebaseId': doc.id});
       }).toList();
     } catch (e) {
-      print("Error fetching pledged gifts from Firestore: $e");
       throw Exception("Failed to fetch pledged gifts");
     }
   }
-
-
-
 
 }

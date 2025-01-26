@@ -22,17 +22,17 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   FriendController friendController = FriendController();
-  final EventController _eventController = EventController();
-  final LocalDatabase _localDatabase = LocalDatabase();
-  List<Friend> _friendsList = [];
-  String _searchQuery = '';
-  List<Event> _userEvents = [];
-  String _userName = '';
-  String _userEmail = '';
-  bool _friendsLoaded = false;
+  final LocalDatabase localDatabase = LocalDatabase();
+  List<Friend> friendsList = [];
+  String search = '';
+  List<Event> userEvents = [];
+  String userName = '';
+  String userEmail = '';
+  bool friendsLoaded = false;
   final PhotoController _photoController = PhotoController();
-  String _profileURL = '';
-  bool _isLoading = true;
+  String profileURL = '';
+  bool isLoading = true;
+  List<Friend> allFriendsList = [];
 
   @override
   void initState() {
@@ -48,45 +48,57 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> loadPhotoURLs() async {
-    var urls = await _photoController.fetchPhotoURLs();
-    setState(() {
-      _profileURL = urls['profileURL']!;
-      _isLoading = false;
-    });
-  }
-
-  getUserName() async {
-    String? name = await _localDatabase.getLoggedInUserName();
-    setState(() {
-      _userName = name ?? 'Guest';
-    });
-  }
-
-  Future<void> loadFriends() async {
-    setState(() => _friendsLoaded = false);
     try {
-      List<Friend> friends = await friendController.getFriends();
+      var urls = await _photoController.fetchPhotoURLs();
       setState(() {
-        _friendsList = friends;
-        _friendsLoaded = true;
+        profileURL = urls['profileURL']!;
+        isLoading = false;
       });
     } catch (e) {
-      print("Error loading friends: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load friends")),
-      );
+      throw Exception("Failed to load photo URLs: $e");
     }
   }
 
-  void _filterFriends() {
-    setState(() {
-      _friendsList = _friendsList.where((friend) {
-        return friend.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            friend.phone.toLowerCase().contains(_searchQuery.toLowerCase());
-      }).toList();
-    });
+  getUserName() async {
+    try {
+      String? name = await localDatabase.getLoggedInUserName();
+      setState(() {
+        userName = name ?? 'Guest';
+      });
+    } catch (e) {
+      throw Exception("Failed to get user name: $e");
+    }
   }
 
+  Future<void> loadFriends() async {
+    setState(() => friendsLoaded = false);
+    try {
+      List<Friend> friends = await friendController.getFriends();
+      setState(() {
+        allFriendsList = friends;  // Store the full list of friends
+        friendsList = List.from(allFriendsList); // Initialize the filtered list
+        friendsLoaded = true;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load friends")),
+      );
+      throw Exception("Failed to load friends: $e");
+    }
+  }
+
+  void filterFriends() {
+    setState(() {
+      if (search.isEmpty) {
+        friendsList = List.from(allFriendsList);
+      } else {
+        friendsList = allFriendsList.where((friend) {
+          return friend.name.toLowerCase().contains(search.toLowerCase()) ||
+              friend.phone.toLowerCase().contains(search.toLowerCase());
+        }).toList();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,33 +107,32 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor:
-          preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
+      preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 50,
         backgroundColor:
-            preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
+        preferences.isDarkMode ? Color(0xff1e1e1e) : Color(0xffefefef),
         actions: [
           IconButton(
             icon: Icon(Icons.exit_to_app,
                 color: preferences.isDarkMode ? Colors.white : Colors.black),
             onPressed: () async {
-              User? user = FirebaseAuth.instance.currentUser;
-              if (user != null) {
-                String userId = user.uid;
-                String email = user.email ?? '';
-                try {
-                  // Update Firestore and SQLite before signing out
+              try {
+                User? user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  String userId = user.uid;
+                  String email = user.email ?? '';
                   await FirebaseFirestore.instance
                       .collection('Users')
                       .doc(userId)
                       .update({'isOwner': false});
-                  await _localDatabase.updateUserIsOwner(email, 0);
+                  await localDatabase.updateUserIsOwner(email, 0);
                   await FirebaseAuth.instance.signOut();
                   Navigator.pushReplacementNamed(context, '/login');
-                } catch (e) {
-                  print('Error updating Firestore: $e');
                 }
+              } catch (e) {
+                throw Exception("Error signing out: $e");
               }
             },
           ),
@@ -148,11 +159,11 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome $_userName',
+                  'Welcome $userName',
                   style: TextStyle(
                       fontSize: 17,
                       color:
-                          preferences.isDarkMode ? Colors.white : Colors.black),
+                      preferences.isDarkMode ? Colors.white : Colors.black),
                 )
               ],
             ),
@@ -220,8 +231,8 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(color: preferences.isDarkMode ? Colors.white : Colors.black),
               onChanged: (query) {
                 setState(() {
-                  _searchQuery = query;
-                  _filterFriends(); // Filter friends based on the query
+                  search = query;
+                  filterFriends(); // Filter friends based on the query
                 });
               },
             ),
@@ -304,7 +315,6 @@ class _HomePageState extends State<HomePage> {
                       },
                     );
                   },
-
                   icon: Icon(
                     Icons.person_add,
                     size: 30,
@@ -319,10 +329,10 @@ class _HomePageState extends State<HomePage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => UserEventListPage(
-                            events: _userEvents,
+                            events: userEvents,
                             onEventsUpdated: (updatedEvents) {
                               setState(() {
-                                _userEvents = updatedEvents;
+                                userEvents = updatedEvents;
                               });
                             },
                           ),
@@ -330,7 +340,7 @@ class _HomePageState extends State<HomePage> {
                       );
                       if (updatedEvents != null) {
                         setState(() {
-                          _userEvents = updatedEvents;
+                          userEvents = updatedEvents;
                         });
                       }
                     },
@@ -347,7 +357,7 @@ class _HomePageState extends State<HomePage> {
                         Text(
                           'Create new event/list',
                           style:
-                              TextStyle(fontSize: 20, color: Colors.white),
+                          TextStyle(fontSize: 20, color: Colors.white),
                         ),
                       ],
                     ),
@@ -357,75 +367,79 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           Expanded(
-            child: _friendsList.isEmpty
+            child: friendsList.isEmpty
                 ? Center(child: Text("No friends found.",style: TextStyle(color: preferences.isDarkMode ? Colors.white : Colors.black ),))
                 : ListView.builder(
-                    itemCount: _friendsList.length,
-                    itemBuilder: (context, index) {
-                      var friend = _friendsList[index];
-                      return Card(
-                        color: preferences.isDarkMode ? const Color(0xffcfcfcf) : Color(0xecfffffc),
-                        elevation: 5,
-                        margin:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          contentPadding: EdgeInsets.all(10),
-                          leading: CircleAvatar(
-                            radius: 30,
-                            backgroundImage: NetworkImage(friend
-                                    .profilePicture.isNotEmpty
-                                ? friend.profilePicture
-                                : _profileURL), // Use default profile picture if none
+              itemCount: friendsList.length,
+              itemBuilder: (context, index) {
+                var friend = friendsList[index];
+                return Card(
+                  color: preferences.isDarkMode ? const Color(0xffcfcfcf) : Color(0xecfffffc),
+                  elevation: 5,
+                  margin:
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.all(10),
+                    leading: CircleAvatar(
+                      radius: 30,
+                      backgroundImage: NetworkImage(friend
+                          .profilePicture.isNotEmpty
+                          ? friend.profilePicture
+                          : profileURL), // Use default profile picture if none
+                    ),
+                    title: Text(
+                      friend.name,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    subtitle: Text(
+                      friend.phone.isNotEmpty ? friend.phone : "N/A",
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    trailing: StreamBuilder<int>(
+                      stream: friendController
+                          .getUpcomingEventsCount(friend.id),
+                      builder: (context, eventSnapshot) {
+                        if (eventSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Text("Loading...");
+                        }
+                        int eventCount = eventSnapshot.data ?? 0;
+                        return Text(
+                          "Upcoming events: $eventCount",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
                           ),
-                          title: Text(
-                            friend.name,
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 18),
-                          ),
-                          subtitle: Text(
-                            friend.phone.isNotEmpty ? friend.phone : "N/A",
-                            style: TextStyle(color: Colors.grey[700]),
-                          ),
-                          trailing: StreamBuilder<int>(
-                            stream: friendController
-                                .getUpcomingEventsCount(friend.id),
-                            builder: (context, eventSnapshot) {
-                              if (eventSnapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return Text("Loading...");
-                              }
-                              int eventCount = eventSnapshot.data ?? 0;
-                              return Text(
-                                "Upcoming events: $eventCount",
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              );
-                            },
-                          ),
-                          onTap: () async {
-                            var events = await FirestoreService()
-                                .getUpcomingEventsForFriend(friend.id);
+                        );
+                      },
+                    ),
+                    onTap: () async {
+                      try {
+                        var events = await FirestoreService()
+                            .getUpcomingEventsForFriend(friend.id);
 
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FriendEventListPage(
-                                  events: events,
-                                  friendName: friend.name,
-                                  friendId: friend.id,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FriendEventListPage(
+                              events: events,
+                              friendName: friend.name,
+                              friendId: friend.id,
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        throw Exception("Failed to load friend events: $e");
+                      }
                     },
                   ),
+                );
+              },
+            ),
           )
         ],
       ),

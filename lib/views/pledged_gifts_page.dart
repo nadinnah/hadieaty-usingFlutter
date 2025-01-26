@@ -29,7 +29,8 @@ class _PledgedGiftsPageState extends State<PledgedGiftsPage> {
 
     try {
       // Fetch pledged gifts from Firestore
-      var pledgedGifts = await _firestoreService.getPledgedGiftsByUser(currentUserId);
+      var pledgedGifts = await _firestoreService.getPledgedGiftsByUser(
+          currentUserId);
       setState(() {
         _pledgedGifts = pledgedGifts;
       });

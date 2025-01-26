@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../controllers/gift_controller.dart';
+import '../models/event.dart';
 import '../services/firebase_api.dart';
 import '../models/gift.dart';
 import '../services/sqlite_service.dart';
@@ -22,117 +24,27 @@ class FriendGiftListPage extends StatefulWidget {
   _FriendGiftListPageState createState() => _FriendGiftListPageState();
 }
 
+
 class _FriendGiftListPageState extends State<FriendGiftListPage> {
-  final LocalDatabase _localDatabase = LocalDatabase();
+  final GiftController _giftController = GiftController();
   bool _isLoading = false;
 
   String get currentUserId => FirebaseAuth.instance.currentUser!.uid;
 
-  Future<void> _pledgeGift(Gift gift) async {
+  Future<void> _handleGiftAction(Gift gift, String action) async {
     try {
       setState(() => _isLoading = true);
 
-      var giftDocRef = FirebaseFirestore.instance
-          .collection('Events')
-          .doc(widget.firebaseEventId)
-          .collection('gifts')
-          .doc(gift.firebaseId);
-
-      await giftDocRef.update({
-        'status': 'Pledged',
-        'pledgedBy': currentUserId,
-      });
-
-      // Notify gift owner
-      final ownerDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(gift.createdBy)
-          .get();
-      if (ownerDoc.exists) {
-        final ownerData = ownerDoc.data();
-        String ownerName = ownerData?['name'] ?? "Gift Owner";
-        String giftName = gift.name.isNotEmpty ? gift.name : "a gift";
-
-        final currentUserDoc = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUserId)
-            .get();
-        String currentUserName = currentUserDoc.data()?['name'] ?? "Someone";
-
-        FirebaseApi().sendNotificationToUser(
-          gift.createdBy,
-          "Gift Pledged!",
-          "$currentUserName pledged your gift: $giftName!",
-        );
+      if (action == 'pledge') {
+        await _giftController.pledgeGift(gift, currentUserId);
+      } else if (action == 'purchase') {
+        await _giftController.purchaseGift(gift, currentUserId);
+      } else if (action == 'unpledge') {
+        await _giftController.unpledgeGift(gift, currentUserId);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error pledging gift: $e")),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _purchaseGift(Gift gift) async {
-    try {
-      setState(() => _isLoading = true);
-
-      if (gift.pledgedBy != currentUserId) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You can only purchase gifts you pledged.")),
-        );
-        return;
-      }
-
-      var giftDocRef = FirebaseFirestore.instance
-          .collection('Events')
-          .doc(widget.firebaseEventId)
-          .collection('gifts')
-          .doc(gift.firebaseId);
-
-      await giftDocRef.update({'status': 'Purchased'});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("${gift.name} has been purchased!")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error purchasing gift: $e")),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _unpledgeGift(Gift gift) async {
-    try {
-      setState(() => _isLoading = true);
-
-      if (gift.pledgedBy != currentUserId) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You can only unpledge gifts you pledged.")),
-        );
-        return;
-      }
-
-      var giftDocRef = FirebaseFirestore.instance
-          .collection('Events')
-          .doc(widget.firebaseEventId)
-          .collection('gifts')
-          .doc(gift.firebaseId);
-
-      await giftDocRef.update({
-        'status': 'Available',
-        'pledgedBy': null,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("${gift.name} has been unpledged!")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error unpledging gift: $e")),
+        SnackBar(content: Text(e.toString())),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -147,7 +59,7 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
       appBar: AppBar(
-        iconTheme: IconThemeData(color: preferences.isDarkMode ? Colors.white : Colors.black),
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
         backgroundColor: isDarkMode ? const Color(0xff1e1e1e) : const Color(0xffefefef),
         title: Text(
           "${widget.eventName} Gifts",
@@ -228,7 +140,7 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
                     children: [
                       if (gift.status == "available")
                         ElevatedButton(
-                          onPressed: () => _pledgeGift(gift),
+                          onPressed: () => _handleGiftAction(gift, 'pledge'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDarkMode ? Colors.blueGrey : Colors.blue,
                           ),
@@ -236,7 +148,7 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
                         ),
                       if (gift.status == "Pledged" && gift.pledgedBy == currentUserId)
                         ElevatedButton(
-                          onPressed: () => _purchaseGift(gift),
+                          onPressed: () => _handleGiftAction(gift, 'purchase'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDarkMode ? Colors.greenAccent : Colors.green,
                           ),
@@ -244,7 +156,7 @@ class _FriendGiftListPageState extends State<FriendGiftListPage> {
                         ),
                       if (gift.status == "Pledged" && gift.pledgedBy == currentUserId)
                         ElevatedButton(
-                          onPressed: () => _unpledgeGift(gift),
+                          onPressed: () => _handleGiftAction(gift, 'unpledge'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDarkMode ? Colors.redAccent : Colors.red,
                           ),

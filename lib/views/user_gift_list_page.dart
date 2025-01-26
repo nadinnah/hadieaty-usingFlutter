@@ -22,7 +22,7 @@ class UserGiftListPage extends StatefulWidget {
 
 class _UserGiftListPageState extends State<UserGiftListPage> {
   final LocalDatabase _localDatabase = LocalDatabase();
-  final GiftController _giftController = GiftController(localdb: LocalDatabase());
+  final GiftController _giftController = GiftController();
   List<Gift> _giftsList = [];
   bool _isLoading = false;
   String _sortOption = 'Name'; // Default sorting option

@@ -6,22 +6,21 @@ import '../models/friend.dart';
 class FriendController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  //Returns a stream of the count of upcoming events for a specific friend.
   Stream<int> getUpcomingEventsCount(String friendId) {
     return FirebaseFirestore.instance
         .collection('Events')
         .where('createdBy', isEqualTo: friendId)
-        .where('status', isEqualTo: 'Upcoming') // Filter for upcoming events
+        .where('status', isEqualTo: 'Upcoming')
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
   }
 
-
-
+  //Adds a friend by their phone number to the current user's friends list.
   Future<void> addFriendByPhone(String phoneNumber) async {
     try {
       String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-      // Query Firestore to find the friend by phone number
       var friendDoc = await _firestore
           .collection('Users')
           .where('phone', isEqualTo: phoneNumber)
@@ -34,59 +33,50 @@ class FriendController {
       var friendData = friendDoc.docs.first.data();
       String friendId = friendDoc.docs.first.id;
 
-      // Fetch current user's name from Firestore
       var currentUserDoc = await _firestore.collection('Users').doc(currentUserId).get();
       String currentUserName = currentUserDoc.data()?['name'] ?? 'Someone';
 
-      // Add the friend to the current user's friends list
       await _firestore.collection('Users').doc(currentUserId).update({
         'friends': FieldValue.arrayUnion([friendId]),
       });
 
-      // Add the current user to the friend's friends list
       await _firestore.collection('Users').doc(friendId).update({
         'friends': FieldValue.arrayUnion([currentUserId]),
       });
 
-      // Notify the new friend
       FirebaseApi().sendNotificationToUser(
         friendId,
         "New Friend Added!",
         "$currentUserName added you as a friend.",
       );
-
-      print("Friend added successfully: ${friendData['name']}");
     } catch (e) {
-      print("Error adding friend: $e");
       throw Exception(e.toString());
     }
   }
 
-  // Delete a friend by their user ID
+  //Deletes a friend from the current user's friends list by their user ID.
   Future<void> deleteFriend(String friendUserId) async {
     try {
       String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      // Remove friend from the current user's `friends` list
       await _firestore.collection('Users').doc(userId).update({
         'friends': FieldValue.arrayRemove([friendUserId]),
       });
 
-      // Optionally remove the current user from the friend's `friends` list
       await _firestore.collection('Users').doc(friendUserId).update({
         'friends': FieldValue.arrayRemove([userId]),
       });
     } catch (e) {
-      print('Error deleting friend: $e');
+      throw Exception('Error deleting friend');
     }
   }
 
+  //Retrieves the list of friends for the current user, including their details.
   Future<List<Friend>> getFriends() async {
     try {
       String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
       if (userId.isEmpty) return [];
 
-      // Fetch user's document
       var userDoc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(userId)
@@ -94,10 +84,8 @@ class FriendController {
 
       if (!userDoc.exists) return [];
 
-      // Extract friend IDs
       List<dynamic> friendIds = userDoc.data()?['friends'] ?? [];
 
-      // Fetch friend details
       List<Friend> friends = [];
       for (String friendId in friendIds) {
         var friendDoc = await FirebaseFirestore.instance
@@ -112,14 +100,13 @@ class FriendController {
             name: friendData?['name'] ?? 'Unknown',
             profilePicture: friendData?['profilePicture'] ?? '',
             phone: friendData?['phone'] ?? '',
-            upcomingEventsCount: 0, // This can be updated dynamically later
+            upcomingEventsCount: 0,
           ));
         }
       }
       return friends;
     } catch (e) {
-      print("Error fetching friends: $e");
-      return [];
+      throw Exception("Error fetching friends");
     }
   }
 }

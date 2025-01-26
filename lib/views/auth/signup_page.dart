@@ -65,6 +65,9 @@ class _SignupPageState extends State<SignupPage> {
                       if (value == null || value.isEmpty) {
                         return 'Phone number is required';
                       }
+                      if (value.length != 11) {
+                        return 'Phone number must be exactly 11 digits';
+                      }
                       return null;
                     },
                   ),
@@ -118,28 +121,35 @@ class _SignupPageState extends State<SignupPage> {
                         String password = passwordController.text.trim();
                         String name = nameController.text.trim();
                         String phone = phoneController.text.trim();
-                        bool result = await authController.Sign_up(
-                            email, password, name, phone);
 
-                        if (result) {
+                        try {
+                          bool result = await authController.Sign_up(
+                              email, password, name, phone);
+
+                          if (result) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                Text('Sign-up successful! Please login.'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => LoginPage()),
+                                  (Route<dynamic> route) => false,
+                            );
+                          } else {
+                            throw Exception('Sign-up failed! Please try again.');
+                          }
+                        } catch (e) {
+                          setState(() {
+                            errorMessage = e.toString();
+                          });
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content:
-                                  Text('Sign-up successful! Please login.'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => LoginPage()),
-                            (Route<dynamic> route) => false,
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content:
-                                  Text('Sign-up failed! Please try again.'),
+                              content: Text(errorMessage),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -150,7 +160,7 @@ class _SignupPageState extends State<SignupPage> {
                       foregroundColor: Colors.white,
                       backgroundColor: Color(0xff273331),
                       padding:
-                          EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                      EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

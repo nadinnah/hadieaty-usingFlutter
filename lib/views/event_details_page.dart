@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../services/shared_preference.dart';
 
 class AddEventPage extends StatelessWidget {
-  final Event? event; // Nullable event for editing
+  final Event? event;
 
   AddEventPage({this.event});
 
@@ -18,14 +18,12 @@ class AddEventPage extends StatelessWidget {
     final preferences = Provider.of<PreferencesService>(context);
     final isDarkMode = preferences.isDarkMode;
 
-    // TextEditingControllers for form fields
     final TextEditingController nameController = TextEditingController();
     final TextEditingController descriptionController = TextEditingController();
     final TextEditingController locationController = TextEditingController();
     final TextEditingController categoryController = TextEditingController();
     final TextEditingController dateController = TextEditingController();
 
-    // Initial status value
     String _status = 'Upcoming';
 
     // Pre-fill form fields if editing
@@ -81,7 +79,8 @@ class AddEventPage extends StatelessWidget {
                           filled: true,
                         ),
                         style: TextStyle(color: Colors.black),
-                        validator: (value) => value == null || value.isEmpty ? 'Event name is required' : null,
+                        validator: (value) =>
+                        value == null || value.isEmpty ? 'Event name is required' : null,
                       ),
                       const SizedBox(height: 10),
                       TextFormField(
@@ -102,7 +101,8 @@ class AddEventPage extends StatelessWidget {
                           filled: true,
                         ),
                         style: TextStyle(color: Colors.black),
-                        validator: (value) => value == null || value.isEmpty ? 'Description is required' : null,
+                        validator: (value) =>
+                        value == null || value.isEmpty ? 'Description is required' : null,
                       ),
                       const SizedBox(height: 10),
                       TextFormField(
@@ -120,7 +120,7 @@ class AddEventPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
-                          fillColor:Colors.grey[50],
+                          fillColor: Colors.grey[50],
                           filled: true,
                         ),
                         style: TextStyle(color: Colors.black),
@@ -152,7 +152,7 @@ class AddEventPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.black),
                           ),
-                          fillColor:Colors.grey[50],
+                          fillColor: Colors.grey[50],
                           filled: true,
                         ),
                         style: TextStyle(color: Colors.black),
@@ -164,7 +164,7 @@ class AddEventPage extends StatelessWidget {
                         decoration: InputDecoration(
                           icon: Icon(Icons.category, color: isDarkMode ? Colors.white : Colors.black),
                           hintText: 'Category',
-                          hintStyle: TextStyle(color:Colors.black),
+                          hintStyle: TextStyle(color: Colors.black),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: isDarkMode ? Colors.white : Colors.grey),
@@ -209,39 +209,50 @@ class AddEventPage extends StatelessWidget {
                       ElevatedButton(
                         onPressed: () async {
                           if (_formKey.currentState?.validate() ?? false) {
-                            final newEvent = Event(
-                              id: event?.id,
-                              name: nameController.text.trim(),
-                              description: descriptionController.text.trim(),
-                              location: locationController.text.trim(),
-                              category: categoryController.text.trim(),
-                              date: dateController.text.trim(),
-                              status: _status,
-                              createdBy: FirebaseAuth.instance.currentUser?.uid ?? '',
-                              syncStatus: false,
-                              firebaseId: event?.firebaseId,
-                              createdAt: event?.createdAt ?? DateFormat('dd-MM-yyyy hh:mm').format(DateTime.now()),
-                            );
+                            try {
+                              final newEvent = Event(
+                                id: event?.id,
+                                name: nameController.text.trim(),
+                                description: descriptionController.text.trim(),
+                                location: locationController.text.trim(),
+                                category: categoryController.text.trim(),
+                                date: dateController.text.trim(),
+                                status: _status,
+                                createdBy: FirebaseAuth.instance.currentUser?.uid ?? '',
+                                syncStatus: false,
+                                firebaseId: event?.firebaseId,
+                                createdAt: event?.createdAt ??
+                                    DateFormat('dd-MM-yyyy hh:mm').format(DateTime.now()),
+                              );
 
-                            bool success;
-                            if (event == null) {
-                              success = await _controller.addEventLocally(newEvent);
-                            } else {
-                              success = await _controller.updateEventLocally(newEvent);
-                            }
+                              bool success;
+                              if (event == null) {
+                                success = await _controller.addEventLocally(newEvent);
+                              } else {
+                                success = await _controller.updateEventLocally(newEvent);
+                              }
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  success
-                                      ? "Event ${event == null ? 'added' : 'updated'} successfully."
-                                      : "Failed to save event.",
+                              if (success) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Event ${event == null ? 'added' : 'updated'} successfully.",
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                Navigator.pop(context, true);
+                              } else {
+                                throw Exception("Failed to save event.");
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString()),
+                                  backgroundColor: Colors.red,
                                 ),
-                                backgroundColor: success ? Colors.green : Colors.red,
-                              ),
-                            );
-
-                            if (success) Navigator.pop(context, true);
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(

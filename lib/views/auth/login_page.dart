@@ -126,24 +126,28 @@ class _LoginPageState extends State<LoginPage> {
                     ElevatedButton(
                       key: Key('login_button'),
                       onPressed: () async {
-                        String email = emailController.text.trim();
-                        String password = passwordController.text.trim();
+                        try {
+                          String email = emailController.text.trim();
+                          String password = passwordController.text.trim();
 
-                        if (formKey.currentState!.validate()) {
-                          bool status = await authController.Sign_in(email, password);
-                          if (status) {
-                            Navigator.pushReplacementNamed(context, '/home');
-                          } else {
-                            setState(() {
-                              errorMessage = 'Login failed: Invalid credentials';
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Invalid credentials. Please try again.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                          if (formKey.currentState!.validate()) {
+                            bool status = await authController.Sign_in(email, password);
+                            if (status) {
+                              Navigator.pushReplacementNamed(context, '/home');
+                            } else {
+                              throw Exception('Login failed: Invalid credentials');
+                            }
                           }
+                        } catch (e) {
+                          setState(() {
+                            errorMessage = e.toString();
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(errorMessage),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(

@@ -18,27 +18,28 @@ class GiftDetailsPage extends StatefulWidget {
 class _GiftDetailsPageState extends State<GiftDetailsPage> {
   final _formKey = GlobalKey<FormState>();
 
-  late String _name;
-  late String _description;
-  late String _category;
-  late double _price;
-  late bool _isPledged;
-  File? _imageFile;
+  late String name;
+  late String description;
+  late String category;
+  late double price;
+  late bool isPledged;
+  File? imageFile;
 
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _name = widget.gift.name;
-    _description = widget.gift.description ?? '';
-    _category = widget.gift.category ?? '';
-    _price = widget.gift.price ?? 0.0;
-    _isPledged = widget.gift.status == 'pledged';
+    name = widget.gift.name;
+    description = widget.gift.description ?? '';
+    category = widget.gift.category ?? '';
+    price = widget.gift.price ?? 0.0;
+    isPledged = widget.gift.status == 'pledged';
   }
 
-  Future<void> _pickImage() async {
-    await _requestPermissions();
+
+  pickImage() async {
+    await requestPermissions();
 
     showDialog(
       context: context,
@@ -56,7 +57,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-                await _pickImageFromCamera();
+                await pickImageFromCamera();
               },
               child: Text(
                 "Take a Picture",
@@ -66,7 +67,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-                await _pickImageFromGallery();
+                await pickImageFromGallery();
               },
               child: Text(
                 "Choose from Gallery",
@@ -79,37 +80,37 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
     );
   }
 
-  Future<void> _requestPermissions() async {
+  Future<void> requestPermissions() async {
     await [Permission.camera, Permission.photos].request();
   }
 
-  Future<void> _pickImageFromGallery() async {
+  Future<void> pickImageFromGallery() async {
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
-        _imageFile = File(pickedFile.path);
+        imageFile = File(pickedFile.path);
       });
     }
   }
 
-  Future<void> _pickImageFromCamera() async {
+  Future<void> pickImageFromCamera() async {
     final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
-        _imageFile = File(pickedFile.path);
+        imageFile = File(pickedFile.path);
       });
     }
   }
 
-  void _saveGift() {
+  void saveGift() {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
-      widget.gift.name = _name;
-      widget.gift.description = _description;
-      widget.gift.category = _category;
-      widget.gift.price = _price;
-      widget.gift.status = _isPledged ? 'pledged' : 'available';
+      widget.gift.name = name;
+      widget.gift.description = description;
+      widget.gift.category = category;
+      widget.gift.price = price;
+      widget.gift.status = isPledged ? 'pledged' : 'available';
 
       Navigator.pop(context, widget.gift);
     }
@@ -144,10 +145,10 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: _pickImage,
+                    onTap: pickImage,
                     child: Column(
                       children: [
-                        _imageFile == null
+                        imageFile == null
                             ? Image.asset(
                           'lib/assets/images/defaultGift.jpeg',
                           height: 200,
@@ -155,7 +156,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                           fit: BoxFit.cover,
                         )
                             : Image.file(
-                          _imageFile!,
+                          imageFile!,
                           height: 200,
                           width: double.infinity,
                           fit: BoxFit.cover,
@@ -170,7 +171,7 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                   ),
                   const SizedBox(height: 20),
                   TextFormField(
-                    initialValue: _name,
+                    initialValue: name,
                     decoration: InputDecoration(
                       icon: Icon(Icons.card_giftcard, color: isDarkMode ? Colors.white : Colors.black),
                       hintText: "Gift Name",
@@ -194,13 +195,13 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _name = value!;
+                      name = value!;
                     },
-                    enabled: !_isPledged,
+                    enabled: !isPledged,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
-                    initialValue: _description,
+                    initialValue: description,
                     decoration: InputDecoration(
                       icon: Icon(Icons.description, color: isDarkMode ? Colors.white : Colors.black),
                       hintText: "Description",
@@ -224,13 +225,13 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _description = value!;
+                      description = value!;
                     },
-                    enabled: !_isPledged,
+                    enabled: !isPledged,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
-                    initialValue: _category,
+                    initialValue: category,
                     decoration: InputDecoration(
                       icon: Icon(Icons.category, color: isDarkMode ? Colors.white : Colors.black),
                       hintText: "Category",
@@ -254,13 +255,13 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _category = value!;
+                      category = value!;
                     },
-                    enabled: !_isPledged,
+                    enabled: !isPledged,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
-                    initialValue: _price.toString(),
+                    initialValue: price.toString(),
                     decoration: InputDecoration(
                       icon: Icon(Icons.attach_money, color: isDarkMode ? Colors.white : Colors.black),
                       hintText: "Price",
@@ -288,14 +289,14 @@ class _GiftDetailsPageState extends State<GiftDetailsPage> {
                       return null;
                     },
                     onSaved: (value) {
-                      _price = double.parse(value!);
+                      price = double.parse(value!);
                     },
-                    enabled: !_isPledged,
+                    enabled: !isPledged,
                   ),
                   const SizedBox(height: 20),
-                  if (!_isPledged)
+                  if (!isPledged)
                     ElevatedButton(
-                      onPressed: _saveGift,
+                      onPressed: saveGift,
                       style: ElevatedButton.styleFrom(
                         foregroundColor: Colors.white,
                         backgroundColor: isDarkMode ? Colors.grey : const Color(0xff273331),

@@ -1,16 +1,16 @@
 class Gift {
-  int? id; // Local database ID
-  String firebaseId; // Firestore ID
+  int? id;
+  String firebaseId;
   String name;
   String? description;
   String? category;
   double? price;
   String? imageUrl;
-  String status; // "Available", "Pledged", "Purchased"
-  String eventId; // Firestore event ID
-  String syncStatus; // "Synced", "Unsynced"
-  String? pledgedBy; // Firestore user ID of the pledger
-  String createdBy; // Firestore user ID of the creator
+  String status;
+  String eventId;
+  String syncStatus;
+  String? pledgedBy;
+  String createdBy;
 
   Gift({
     this.id,
@@ -27,7 +27,7 @@ class Gift {
     required this.createdBy,
   });
 
-  // Factory method: Convert from a map to a Gift object
+  /// Creates a `Gift` object from a map.
   factory Gift.fromMap(Map<String, dynamic> map) {
     return Gift(
       id: map['id'],
@@ -40,12 +40,12 @@ class Gift {
       status: map['status'] ?? 'Available',
       eventId: map['eventId'] ?? '',
       syncStatus: map['syncStatus'] ?? 'Unsynced',
-      pledgedBy: map['pledgedBy'], // Firestore user ID of the pledger
-      createdBy: map['createdBy'] ?? '', // Firestore user ID of the creator
+      pledgedBy: map['pledgedBy'],
+      createdBy: map['createdBy'] ?? '',
     );
   }
 
-  // Convert Gift object to a map for storage
+  /// Converts a `Gift` object to a map for storage.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
